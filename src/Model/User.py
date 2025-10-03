@@ -1,19 +1,10 @@
-from pydantic import BaseModel
 from datetime import datetime as timestamp
 
 
-class User(BaseModel):
-    id: int
-    username: str
-    nom: str
-    prenom: str
-    mail: str
-    password_hash: str
-    salt: str
-    sign_in_date: timestamp = None
-    last_login: timestamp = None
-    status: str  # enum = "active"  # active, inactive, banned
-    setting_param: str
+class User:
+    """
+    Classe représentant un utilisateur.
+    """
 
     def __init__(self, id, username, nom, prenom, mail, password_hash, salt, sign_in_date=None, last_login=None, status="active", setting_param="Tu es un assistant utile."):
         """
@@ -53,3 +44,23 @@ class User(BaseModel):
         self.last_login = last_login
         self.status = status
         self.setting_param = setting_param
+
+    def __eq__(self, other):
+        if not isinstance(other, User):
+            return False
+        return (
+            self.id == other.id and
+            self.username == other.username and
+            self.nom == other.nom and
+            self.prenom == other.prenom and
+            self.mail == other.mail and
+            self.password_hash == other.password_hash and
+            self.salt == other.salt and
+            self.sign_in_date == other.sign_in_date and
+            self.last_login == other.last_login and
+            self.status == other.status and
+            self.setting_param == other.setting_param
+        )
+
+    def __str__(self):
+        return f"User(id={self.id}, username='{self.username}')"
