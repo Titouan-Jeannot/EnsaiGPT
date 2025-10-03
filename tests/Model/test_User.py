@@ -1,5 +1,6 @@
 import pytest
-from ...src.Model.User import User
+from datetime import datetime as timestamp
+from src.Model.User import User
 # from datetime import datetime
 
 
@@ -11,7 +12,11 @@ def test_user_initialization():
         prenom="Prenom",
         mail="test@mail.com",
         password_hash="hashedpassword",
-        salt="randomsalt"
+        salt="randomsalt",
+        sign_in_date=timestamp.now(),
+        last_login=timestamp.now(),
+        status="active",
+        setting_param="Tu es un assistant utile."
     )
     assert user.id == 1
     assert user.username == "testuser"
@@ -22,6 +27,9 @@ def test_user_initialization():
     assert user.salt == "randomsalt"
     assert user.status == "active"
     assert user.setting_param == "Tu es un assistant utile."
+    assert user.sign_in_date is not None
+    assert user.last_login is not None
+
 
 
 def test_user_init_type_errors():
@@ -50,14 +58,46 @@ def test_user_init_type_errors():
 
 
 def test_user_equality():
-    user1 = User(id=1, username="testuser", salt="randomsalt", password="hashedpassword")
-    user2 = User(id=1, username="testuser", salt="randomsalt", password="hashedpassword")
-    user3 = User(id=2, username="otheruser", salt="othersalt", password="otherpassword")
+    user1 = User(
+        id=1,
+        username="testuser",
+        nom="Nom",
+        prenom="Prenom",
+        mail="test@mail.com",
+        password_hash="hashedpassword",
+        salt="randomsalt"
+    )
+    user2 = User(
+        id=1,
+        username="testuser",
+        nom="Nom",
+        prenom="Prenom",
+        mail="test@mail.com",
+        password_hash="hashedpassword",
+        salt="randomsalt"
+    )
+    user3 = User(
+        id=2,
+        username="otheruser",
+        nom="AutreNom",
+        prenom="AutrePrenom",
+        mail="other@mail.com",
+        password_hash="otherpassword",
+        salt="othersalt"
+    )
 
     assert user1 == user2
     assert user1 != user3
 
 
 def test_user_string_representation():
-    user = User(id=1, username="testuser", salt="randomsalt", password="hashedpassword")
+    user = User(
+        id=1,
+        username="testuser",
+        nom="Nom",
+        prenom="Prenom",
+        mail="test@mail.com",
+        password_hash="hashedpassword",
+        salt="randomsalt"
+    )
     assert str(user) == "User(id=1, username='testuser')"
