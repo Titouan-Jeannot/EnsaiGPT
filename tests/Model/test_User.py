@@ -1,6 +1,6 @@
 import pytest
-from .User import User
-from datetime import datetime
+from ...src.Model.User import User
+# from datetime import datetime
 
 
 def test_user_initialization():
