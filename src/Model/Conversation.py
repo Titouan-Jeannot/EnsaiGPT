@@ -22,13 +22,13 @@ class Conversation:
     is_active : bool
         Indique si la conversation est encore active (True) ou archivée (False).
     """
-    def __init__(self, 
-                id_conversation: int, 
-                titre: str, 
-                created_at: datetime, 
-                setting_conversation: str, 
-                token_viewer: str, 
-                token_writter: str, 
+    def __init__(self,
+                id_conversation: int,
+                titre: str,
+                created_at: datetime,
+                setting_conversation: str,
+                token_viewer: str,
+                token_writter: str,
                 is_active: bool):
         """
         Initialise une nouvelle instance de Conversation.
