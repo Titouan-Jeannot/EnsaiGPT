@@ -1,5 +1,7 @@
-import pytest from src.Model.Feedback import Feedback
+import pytest
+from src.Objet_Metier.Feedback import Feedback
 from datetime import datetime
+
 
 def test_feedback_initialization():
     feedback = Feedback(
