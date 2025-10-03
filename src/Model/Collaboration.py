@@ -17,12 +17,14 @@ class Collaboration(self, id_collaboration, id_conversation, id_user, role):
         Constructeur de la classe Collaboration.
 
         Paramètres:
+        -----------
         - id_collaboration : identifiant unique de la collaboration
         - id_conversation : identifiant de la conversation
         - id_user : identifiant de l'utilisateur
         - role : rôle de l'utilisateur dans la conversation (ex: admin, membre)
 
         Raises:
+        -------
         - ValueError : si un des paramètres est None
 
         """
