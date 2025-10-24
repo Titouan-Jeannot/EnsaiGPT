@@ -38,3 +38,13 @@ class Feedback :
         self.is_like = is_like
         self.comment = comment
         self.create_at = create_at
+
+    def __eq__(self, other):
+        if not isinstance(other, Feedback):
+            return False
+        return (self.id_feedback == other.id_feedback and
+                self.id_user == other.id_user and
+                self.id_message == other.id_message and
+                self.is_like == other.is_like and
+                self.comment == other.comment and
+                self.create_at == other.create_at)

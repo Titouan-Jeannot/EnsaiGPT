@@ -84,3 +84,9 @@ def test_feedback_past_date():
     past_date = datetime(2000, 1, 1)
     feedback = Feedback(id_feedback=1, id_user=100, id_message=200, is_like=True, comment="Past message!", create_at=past_date)
     assert feedback.create_at == past_date
+
+def test_feedback_boolean_edge_cases():
+    feedback_true = Feedback(id_feedback=1, id_user=100, id_message=200, is_like=True, comment="Like!", create_at=datetime.now())
+    feedback_false = Feedback(id_feedback=2, id_user=101, id_message=201, is_like=False, comment="Dislike!", create_at=datetime.now())
+    assert feedback_true.is_like is True
+    assert feedback_false.is_like is False
