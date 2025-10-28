@@ -1,13 +1,7 @@
 import pytest
 from datetime import datetime
-from src.DAO.user_DAO import UserDAO
-# Import du DAO et du modèle User en tenant compte du chemin du projet
-try:
-    from DAO.user_DAO import UserDAO
-    from Objet_Metier.User import User
-except Exception:
-    from src.DAO.user_DAO import UserDAO
-    from src.Objet_Metier.User import User
+from src.DAO.User_DAO import UserDAO
+from src.Objet_Metier.User import User
 
 
 class FakeCursor:

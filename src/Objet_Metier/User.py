@@ -1,4 +1,5 @@
 from datetime import datetime as timestamp
+from typing import Optional
 
 
 class User:
@@ -6,12 +7,15 @@ class User:
     Classe représentant un utilisateur.
     """
 
-    def __init__(self, id, username, nom, prenom, mail, password_hash, salt, sign_in_date=None, last_login=None, status="active", setting_param="Tu es un assistant utile."):
+    def __init__(self, id: Optional[int], username: str, nom: str, prenom: str, mail: str, password_hash: str, salt: str, sign_in_date=None, last_login=None, status="active", setting_param="Tu es un assistant utile."):
         """
         Initialisation de la classe User.
+        - id peut être None pour un utilisateur non encore inséré en base.
+        - password_hash et salt doivent être des chaînes (base64) pour un objet persistant.
         """
-        if not isinstance(id, int):
-            raise ValueError("id must be an integer")
+        # ajustement : faire d'autre verifications, verifier base64 et status peut etre que "active", "inactive", "banni"
+        if id is not None and not isinstance(id, int):
+            raise ValueError("id must be an integer or None")
         if not isinstance(username, str):
             raise ValueError("username must be a string")
         if not isinstance(nom, str):
@@ -30,6 +34,8 @@ class User:
             raise ValueError("last_login must be a timestamp or None")
         if not isinstance(status, str):
             raise ValueError("status must be a string")
+        if status not in ["active", "inactive", "banni"]:
+            raise ValueError("status must be 'active', 'inactive', or 'banni'")
         if not isinstance(setting_param, str):
             raise ValueError("setting_param must be a string")
 
