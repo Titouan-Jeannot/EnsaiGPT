@@ -10,6 +10,8 @@ except Exception:
     from src.ObjetMetier.Message import Message
 
 # ajustement : il faut utiliser un singleton de connexion partagé et harmonisé entre les DAO.
+
+
 class MessageDAO:
     """DAO pour Message : CRUD + méthodes spécifiques aux conversations."""
 

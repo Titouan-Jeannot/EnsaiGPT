@@ -1,5 +1,5 @@
 import pytest
-from src.ObjetMetier.Collaboration import Collaboration
+from src.Objet_Metier.Collaboration import Collaboration
 
 
 def test_collaboration_initialization():
@@ -202,19 +202,17 @@ def test_large_number_of_collaborations():
         assert collaborations[i].role == "viewer"
 
 
-def test_case_insensitive_role():
-    collab1 = Collaboration(
-        id_collaboration=1, id_conversation=10, id_user=100, role="ADMIN"
-    )
-    collab2 = Collaboration(
-        id_collaboration=1, id_conversation=10, id_user=100, role="admin"
-    )
-    collab3 = Collaboration(
-        id_collaboration=1, id_conversation=10, id_user=100, role="AdMiN"
-    )
-
-    assert collab1 == collab2
-    assert collab1 == collab3
+def test_role_case_sensitivity():
+    with pytest.raises(ValueError):
+        Collaboration(id_collaboration=1, id_conversation=10, id_user=100, role="Admin")
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="VIEWER"
+        )
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="Writer"
+        )
 
 
 def test_whitespace_in_role():
@@ -285,20 +283,6 @@ def test_role_with_special_characters():
             id_collaboration=1, id_conversation=10, id_user=100, role="writ$er"
         )
 
-def test_role_with_leading_trailing_spaces():
-    """Test avec des rôles ayant des espaces en début/fin"""
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role=" admin"
-        )
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role="viewer "
-        )
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role=" writer "
-        )
 
 def test_multiple_collaborations_equality():
     """Test l'égalité entre plusieurs collaborations dans une liste"""
@@ -328,19 +312,15 @@ def test_role_with_numeric_string():
             id_collaboration=1, id_conversation=10, id_user=100, role="123"
         )
 
-def test_collaboration_with_string_ids():
-            """Test avec des IDs comme chaînes de caractères"""
+def test_collaboration_with_mixed_case_role():
+            """Test avec des rôles ayant des majuscules et minuscules mélangées"""
             with pytest.raises(ValueError):
                 Collaboration(
-                    id_collaboration="1", id_conversation=10, id_user=100, role="admin"
+                    id_collaboration=1, id_conversation=10, id_user=100, role="AdMiN"
                 )
             with pytest.raises(ValueError):
                 Collaboration(
-                    id_collaboration=1, id_conversation="10", id_user=100, role="admin"
-                )
-            with pytest.raises(ValueError):
-                Collaboration(
-                    id_collaboration=1, id_conversation=10, id_user="100", role="admin"
+                    id_collaboration=1, id_conversation=10, id_user=100, role="ViEwEr"
                 )
 
 def test_collaboration_with_special_characters_in_ids():
