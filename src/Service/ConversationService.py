@@ -1,188 +1,77 @@
-from typing import List, Optional, TYPE_CHECKING
+"""Service métier pour les conversations."""
+from __future__ import annotations
+
+from dataclasses import dataclass
 from datetime import datetime
-import secrets
+from typing import List, Optional
 
-try:
-    from ObjetMetier.Conversation import Conversation
-    from DAO.ConversationDAO import ConversationDAO
-    from Service.UserService import UserService
-    from Service.MessageService import MessageService
-except ImportError:  # pragma: no cover - compatibilité exécution
-    from src.ObjetMetier.Conversation import Conversation
-    from src.DAO.ConversationDAO import ConversationDAO
-    from src.Service.UserService import UserService
-    from src.Service.MessageService import MessageService
-
-if TYPE_CHECKING:  # pragma: no cover - uniquement pour les analyseurs statiques
-    try:
-        from Service.CollaborationService import CollaborationService
-    except ImportError:  # pragma: no cover
-        from src.Service.CollaborationService import CollaborationService
+from src.DAO.CollaborationDAO import CollaborationDAO
+from src.DAO.ConversationDAO import ConversationDAO
+from src.ObjetMetier.Collaboration import Collaboration
+from src.ObjetMetier.Conversation import Conversation
 
 
+@dataclass(slots=True)
 class ConversationService:
-    """Service pour gérer les conversations."""
+    """Coordonne la gestion des conversations."""
 
-    def __init__(
-        self,
-        conversation_dao: ConversationDAO,
-        collaboration_service: Optional["CollaborationService"] = None,
-        user_service: Optional[UserService] = None,
-        message_service: Optional[MessageService] = None,
-    ):
-        self.conversation_dao = conversation_dao
-        self.collaboration_service = collaboration_service
-        self.user_service = user_service
-        self.message_service = message_service
+    conversation_dao: ConversationDAO
+    collaboration_dao: CollaborationDAO
 
     def create_conversation(
-        self, title: str, user_id: int, setting_conversation: str = ""
+        self, conversation: Conversation, owner_id: int
     ) -> Conversation:
-        """Crée une nouvelle conversation et ajoute le créateur comme admin."""
-        # Vérifier que l'utilisateur existe
-        if self.user_service:
-            user = self.user_service.get_user_by_id(user_id)
-            if not user:
-                raise ValueError("Utilisateur introuvable")
-
-        # Valider le titre
-        if not title or not title.strip():
-            raise ValueError("Titre invalide")
-        title = title.strip()
-
-        # Normaliser les paramètres éventuels
-        setting_conversation = setting_conversation or ""
-
-        # Générer les tokens d'accès
-        token_viewer = secrets.token_urlsafe(32)
-        token_writter = secrets.token_urlsafe(32)
-
-        # Créer l'objet conversation
-        conversation = Conversation(
-            id_conversation=None,  # Sera généré par la BD
-            titre=title,
-            created_at=datetime.now(),
-            setting_conversation=setting_conversation,
-            token_viewer=token_viewer,
-            token_writter=token_writter,
-            is_active=True,
-        )
-
-        # Persister et retourner
-        conversation = self.conversation_dao.create(conversation, user_id)
-
-        # Ajouter le créateur comme admin
-        if self.collaboration_service:
-            self.collaboration_service.create_collab(
-                user_id, conversation.id_conversation, "admin"
+        created = self.conversation_dao.create(conversation)
+        self.collaboration_dao.create(
+            Collaboration(
+                id_collaboration=None,
+                id_conversation=created.id_conversation or 0,
+                id_user=owner_id,
+                role="ADMIN",
             )
+        )
+        return created
 
-        return conversation
-
-    def get_conversation_by_id(
-        self, conversation_id: int, user_id: int
-    ) -> Optional[Conversation]:
-        """Récupère une conversation par son ID si l'utilisateur y a accès."""
-        if not isinstance(conversation_id, int) or conversation_id < 0:
-            raise ValueError("ID de conversation invalide")
-
-        conversation = self.conversation_dao.get_by_id(conversation_id)
-        if not conversation:
-            return None
-
-        # Vérifier que l'utilisateur a accès
-        if not self.conversation_dao.has_access(conversation_id, user_id):
-            raise ValueError("Accès non autorisé à cette conversation")
-
-        return conversation
+    def get_conversation_by_id(self, conversation_id: int) -> Optional[Conversation]:
+        return self.conversation_dao.get_by_id(conversation_id)
 
     def get_list_conv(self, user_id: int) -> List[Conversation]:
-        """Liste toutes les conversations actives d'un utilisateur."""
-        return self.conversation_dao.get_conversations_by_user(user_id)
+        collaborations = self.collaboration_dao.list_by_user(user_id)
+        conversation_ids = [collab.id_conversation for collab in collaborations]
+        conversations = self.conversation_dao.list_by_ids(conversation_ids)
+        return [conv for conv in conversations if conv.is_active]
 
-    def get_list_conv_by_date(self, user_id: int, date: datetime) -> List[Conversation]:
-        """Liste les conversations d'un utilisateur créées à une date donnée."""
-        return self.conversation_dao.get_conversations_by_date(user_id, date)
+    def get_list_conv_by_date(self, user_id: int, target_date: datetime) -> List[Conversation]:
+        conversations = self.get_list_conv(user_id)
+        return [conv for conv in conversations if conv.created_at.date() == target_date.date()]
 
     def get_list_conv_by_title(self, user_id: int, title: str) -> List[Conversation]:
-        """Recherche les conversations d'un utilisateur par titre."""
-        if not title.strip():
-            raise ValueError("Critère de recherche invalide")
-        return self.conversation_dao.search_conversations_by_title(
-            user_id, title.strip()
-        )
+        keyword = title.lower()
+        conversations = self.get_list_conv(user_id)
+        return [conv for conv in conversations if keyword in conv.titre.lower()]
 
-    def modify_title(self, conversation_id: int, user_id: int, new_title: str) -> None:
-        """Modifie le titre d'une conversation si l'utilisateur est admin."""
-        if self.collaboration_service and not self.collaboration_service.is_admin(
-            user_id, conversation_id
-        ):
-            raise ValueError("Droits d'administration requis pour modifier le titre")
-
-        if not new_title or not new_title.strip():
-            raise ValueError("Nouveau titre invalide")
-
-        # Vérifier les droits d'écriture
-        if not self.conversation_dao.has_write_access(conversation_id, user_id):
-            raise ValueError("Droits d'écriture requis pour modifier le titre")
-
-        if not self.conversation_dao.update_title(conversation_id, new_title.strip()):
-            raise ValueError("Impossible de mettre à jour le titre de la conversation")
-
-    def delete_conversation(self, conversation_id: int, user_id: int) -> None:
-        """Supprime une conversation si l'utilisateur est admin."""
-        if self.collaboration_service and not self.collaboration_service.is_admin(
-            user_id, conversation_id
-        ):
-            raise ValueError(
-                "Droits d'administration requis pour supprimer la conversation"
-            )
-
-        # Vérifier les droits d'écriture
-        if not self.conversation_dao.has_write_access(conversation_id, user_id):
-            raise ValueError("Droits d'écriture requis pour supprimer la conversation")
-
-        # Supprimer d'abord les messages si un MessageService est disponible
-        if self.message_service:
-            self.message_service.delete_all_messages_by_conversation(conversation_id)
-
-        # Supprimer la conversation
-        if not self.conversation_dao.delete(conversation_id):
-            raise ValueError("Impossible de supprimer la conversation")
-
-    # Méthodes supplémentaires suggérées
-
-    def archive_conversation(self, conversation_id: int, user_id: int) -> None:
-        """Archive une conversation (is_active = False)."""
-        if not self.conversation_dao.has_write_access(conversation_id, user_id):
-            raise ValueError("Droits d'écriture requis pour archiver la conversation")
-        if not self.conversation_dao.set_active(conversation_id, False):
-            raise ValueError("Impossible d'archiver la conversation")
-
-    def restore_conversation(self, conversation_id: int, user_id: int) -> None:
-        """Restaure une conversation archivée."""
-        if not self.conversation_dao.has_write_access(conversation_id, user_id):
-            raise ValueError("Droits d'écriture requis pour restaurer la conversation")
-        if not self.conversation_dao.set_active(conversation_id, True):
-            raise ValueError("Impossible de restaurer la conversation")
-
-    def share_conversation(
+    def modify_title(
         self,
         conversation_id: int,
-        user_id: int,
-        target_user_id: int,
-        can_write: bool = False,
-    ) -> None:
-        """Partage une conversation avec un autre utilisateur."""
-        if not self.conversation_dao.has_write_access(conversation_id, user_id):
-            raise ValueError("Droits d'écriture requis pour partager la conversation")
+        new_title: str,
+        actor_id: Optional[int] = None,
+    ) -> Conversation:
+        if not new_title or not new_title.strip():
+            raise ValueError("Titre invalide")
+        conversation = self.conversation_dao.get_by_id(conversation_id)
+        if conversation is None:
+            raise ValueError("Conversation introuvable")
+        if actor_id is not None:
+            collab = self.collaboration_dao.find_by_user_and_conversation(actor_id, conversation_id)
+            if collab is None or not collab.can_write():
+                raise PermissionError("L'utilisateur ne peut pas modifier cette conversation")
+        conversation.titre = new_title.strip()
+        self.conversation_dao.update(conversation)
+        return conversation
 
-        if self.user_service:
-            target_user = self.user_service.get_user_by_id(target_user_id)
-            if not target_user:
-                raise ValueError("Utilisateur cible introuvable")
-
-        if not self.conversation_dao.add_user_access(
-            conversation_id, target_user_id, can_write
-        ):
-            raise ValueError("Impossible de partager la conversation")
+    def delete_conversation(self, conversation_id: int, actor_id: Optional[int] = None) -> bool:
+        if actor_id is not None:
+            collab = self.collaboration_dao.find_by_user_and_conversation(actor_id, conversation_id)
+            if collab is None or not collab.is_admin():
+                raise PermissionError("Seul un administrateur peut supprimer la conversation")
+        return self.conversation_dao.delete(conversation_id)

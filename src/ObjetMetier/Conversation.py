@@ -1,31 +1,36 @@
-"""Définition de l'objet métier Conversation."""
+"""Objet métier Conversation."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 
-@dataclass
+@dataclass(slots=True)
 class Conversation:
-    """Représente une conversation persistée dans la base de données."""
+    """Représente une conversation enregistrée."""
 
-    id_conversation: int | None
-    titre: str
-    created_at: datetime
-    setting_conversation: str
-    token_viewer: str
-    token_writter: str
-    is_active: bool
+    id_conversation: Optional[int] = None
+    titre: str = field(default="")
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    setting_conversation: str = field(default="")
+    token_viewer: str = field(default="")
+    token_writter: str = field(default="")
+    is_active: bool = field(default=True)
 
-    @classmethod
-    def from_dict(cls, data: dict) -> "Conversation":
-        """Fabrique une conversation à partir d'un dictionnaire."""
-        return cls(
-            id_conversation=data.get("id_conversation"),
-            titre=data.get("titre", ""),
-            created_at=data.get("created_at"),
-            setting_conversation=data.get("setting_conversation", ""),
-            token_viewer=data.get("token_viewer", ""),
-            token_writter=data.get("token_writter", ""),
-            is_active=bool(data.get("is_active", True)),
-        )
+    def __post_init__(self) -> None:
+        if not isinstance(self.titre, str) or not self.titre:
+            raise ValueError("Le titre doit être une chaîne non vide")
+        if not isinstance(self.setting_conversation, str):
+            raise ValueError("Le prompt de conversation doit être une chaîne")
+        if not isinstance(self.token_viewer, str) or not self.token_viewer:
+            raise ValueError("token_viewer doit être une chaîne non vide")
+        if not isinstance(self.token_writter, str) or not self.token_writter:
+            raise ValueError("token_writter doit être une chaîne non vide")
+        if not isinstance(self.is_active, bool):
+            raise ValueError("is_active doit être booléen")
+
+    def deactivate(self) -> None:
+        """Marque la conversation comme inactive."""
+
+        self.is_active = False

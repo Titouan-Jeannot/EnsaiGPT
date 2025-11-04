@@ -1,51 +1,30 @@
+"""Objet métier Feedback."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 
+@dataclass(slots=True)
 class Feedback:
+    """Exprime une réaction d'utilisateur à un message."""
 
-    def __init__(self, id_feedback, id_user, id_message, is_like, comment, create_at):
-        """
-        Constructeur de la classe Feedback.
+    id_feedback: Optional[int] = None
+    id_user: int = field(default=0)
+    id_message: int = field(default=0)
+    is_like: bool = field(default=True)
+    comment: Optional[str] = field(default=None)
+    created_at: datetime = field(default_factory=datetime.utcnow)
 
-        Paramètres:
-        -----------
-        - id_feedback : identifiant unique du feedback
-        - id_user : identifiant de l'utilisateur
-        - id_message : identifiant du message
-        - is_like : booléen indiquant si le feedback est un like (True) ou un dislike (False)
-        - comment : commentaire associé au feedback
-        - create_at : date et heure de création du feedback
-
-        Raises:
-        -----------
-        - ValueError : si un des paramètres est None
-        """
-        if id_feedback is None or not isinstance(id_feedback, int) or id_feedback < 0:
-            raise ValueError("id_feedback must be a non-null positive integer")
-        if id_user is None or not isinstance(id_user, int) or id_user < 0:
-            raise ValueError("id_user must be a non-null positive integer")
-        if id_message is None or not isinstance(id_message, int) or id_message < 0:
-            raise ValueError("id_message must be a non-null positive integer")
-        if is_like is None or not isinstance(is_like, bool):
-            raise ValueError("is_like must be a non-null boolean")
-        if comment is not None and not isinstance(comment, str):
-            raise ValueError("comment must be a string or None")
-        if create_at is None or not isinstance(create_at, datetime):
-            raise ValueError("create_at must be a non-null datetime")
-
-        self.id_feedback = id_feedback
-        self.id_user = id_user
-        self.id_message = id_message
-        self.is_like = is_like
-        self.comment = comment
-        self.create_at = create_at
-
-    def __eq__(self, other):
-        if not isinstance(other, Feedback):
-            return False
-        return (self.id_feedback == other.id_feedback and
-                self.id_user == other.id_user and
-                self.id_message == other.id_message and
-                self.is_like == other.is_like and
-                self.comment == other.comment and
-                self.create_at == other.create_at)
+    def __post_init__(self) -> None:
+        if self.id_user <= 0:
+            raise ValueError("id_user doit être positif")
+        if self.id_message <= 0:
+            raise ValueError("id_message doit être positif")
+        if not isinstance(self.is_like, bool):
+            raise ValueError("is_like doit être booléen")
+        if self.comment is not None and not isinstance(self.comment, str):
+            raise ValueError("comment doit être une chaîne ou None")
+        if not isinstance(self.created_at, datetime):
+            raise ValueError("created_at doit être un datetime")
