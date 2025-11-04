@@ -41,7 +41,9 @@ class Collaboration:
             raise ValueError("id_user doit être un integer non null")
         if role is None or not isinstance(role, str):
             raise ValueError("role doit être une chaîne non nulle")
+        role = role.lower()  # Normalize role to lowercase
         if role not in ["admin", "viewer", "writer", "banned"]:
+            raise ValueError("role doit être 'admin', 'viewer', 'writer' ou 'banned'")
             raise ValueError("role doit être 'admin', 'viewer', 'writer' ou 'banned'")
 
         # id_collaboration peut être None (auto-généré par la BDD lors de l'insertion)
