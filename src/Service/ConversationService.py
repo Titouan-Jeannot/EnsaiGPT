@@ -1,17 +1,23 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 import secrets
 
 try:
-    from Objet_Metier.Conversation import Conversation
-    from DAO.Conversation_DAO import ConversationDAO
+    from ObjetMetier.Conversation import Conversation
+    from DAO.ConversationDAO import ConversationDAO
     from Service.UserService import UserService
     from Service.MessageService import MessageService
-except ImportError:
-    from src.Objet_Metier.Conversation import Conversation
-    from src.DAO.Conversation_DAO import ConversationDAO
+except ImportError:  # pragma: no cover - compatibilité exécution
+    from src.ObjetMetier.Conversation import Conversation
+    from src.DAO.ConversationDAO import ConversationDAO
     from src.Service.UserService import UserService
     from src.Service.MessageService import MessageService
+
+if TYPE_CHECKING:  # pragma: no cover - uniquement pour les analyseurs statiques
+    try:
+        from Service.CollaborationService import CollaborationService
+    except ImportError:  # pragma: no cover
+        from src.Service.CollaborationService import CollaborationService
 
 
 class ConversationService:
@@ -20,7 +26,7 @@ class ConversationService:
     def __init__(
         self,
         conversation_dao: ConversationDAO,
-        collaboration_service: Optional[CollaborationService] = None,
+        collaboration_service: Optional["CollaborationService"] = None,
         user_service: Optional[UserService] = None,
         message_service: Optional[MessageService] = None,
     ):
@@ -43,6 +49,9 @@ class ConversationService:
         if not title or not title.strip():
             raise ValueError("Titre invalide")
         title = title.strip()
+
+        # Normaliser les paramètres éventuels
+        setting_conversation = setting_conversation or ""
 
         # Générer les tokens d'accès
         token_viewer = secrets.token_urlsafe(32)
@@ -117,7 +126,8 @@ class ConversationService:
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour modifier le titre")
 
-        self.conversation_dao.update_title(conversation_id, new_title.strip())
+        if not self.conversation_dao.update_title(conversation_id, new_title.strip()):
+            raise ValueError("Impossible de mettre à jour le titre de la conversation")
 
     def delete_conversation(self, conversation_id: int, user_id: int) -> None:
         """Supprime une conversation si l'utilisateur est admin."""
@@ -137,7 +147,8 @@ class ConversationService:
             self.message_service.delete_all_messages_by_conversation(conversation_id)
 
         # Supprimer la conversation
-        self.conversation_dao.delete(conversation_id)
+        if not self.conversation_dao.delete(conversation_id):
+            raise ValueError("Impossible de supprimer la conversation")
 
     # Méthodes supplémentaires suggérées
 
@@ -145,13 +156,15 @@ class ConversationService:
         """Archive une conversation (is_active = False)."""
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour archiver la conversation")
-        self.conversation_dao.set_active(conversation_id, False)
+        if not self.conversation_dao.set_active(conversation_id, False):
+            raise ValueError("Impossible d'archiver la conversation")
 
     def restore_conversation(self, conversation_id: int, user_id: int) -> None:
         """Restaure une conversation archivée."""
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour restaurer la conversation")
-        self.conversation_dao.set_active(conversation_id, True)
+        if not self.conversation_dao.set_active(conversation_id, True):
+            raise ValueError("Impossible de restaurer la conversation")
 
     def share_conversation(
         self,
@@ -169,6 +182,7 @@ class ConversationService:
             if not target_user:
                 raise ValueError("Utilisateur cible introuvable")
 
-        self.conversation_dao.add_user_access(
+        if not self.conversation_dao.add_user_access(
             conversation_id, target_user_id, can_write
-        )
+        ):
+            raise ValueError("Impossible de partager la conversation")
