@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime
-from src.Objet_Metier.User import User
+from src.ObjetMetier.User import User
 
 
 # Initialisation - succèss (cas explicites)

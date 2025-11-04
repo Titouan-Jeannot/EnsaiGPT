@@ -2,12 +2,12 @@ from typing import List, Optional
 import datetime
 
 try:
-    from Objet_Metier.Message import Message
+    from ObjetMetier.Message import Message
     from DAO.Message_DAO import MessageDAO
     from Service.UserService import UserService
     from Service.AuthService import AuthService
 except Exception:
-    from src.Objet_Metier.Message import Message
+    from src.ObjetMetier.Message import Message
     from src.DAO.Message_DAO import MessageDAO
     from src.Service.UserService import UserService
     from src.Service.AuthService import AuthService
