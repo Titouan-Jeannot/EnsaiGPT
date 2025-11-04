@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
   prenom          VARCHAR(255) NOT NULL,
   mail            VARCHAR(255) NOT NULL UNIQUE,
   password_hash   VARCHAR(255) NOT NULL,
+  salt            VARCHAR(255),                      -- 🆕 ajouté ici
   sign_in_date    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
   last_login      TIMESTAMPTZ,
   status          user_status_enum NOT NULL DEFAULT 'active',
