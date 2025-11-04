@@ -260,3 +260,172 @@ def test_zero_ids():
     assert collab.id_conversation == 0
     assert collab.id_user == 0
     assert collab.role == "banned"
+
+def test_role_as_empty_string():
+    """Test avec un rôle comme chaîne vide"""
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role=""
+        )
+
+def test_role_with_special_characters():
+    """Test avec des rôles contenant des caractères spéciaux"""
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="adm!n"
+        )
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="view#er"
+        )
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="writ$er"
+        )
+
+
+def test_multiple_collaborations_equality():
+    """Test l'égalité entre plusieurs collaborations dans une liste"""
+    collabs1 = [
+        Collaboration(id_collaboration=i, id_conversation=1, id_user=1, role="admin")
+        for i in range(5)
+    ]
+    collabs2 = [
+        Collaboration(id_collaboration=i, id_conversation=1, id_user=1, role="admin")
+        for i in range(5)
+    ]
+    collabs3 = [
+        Collaboration(id_collaboration=i + 1, id_conversation=1, id_user=1, role="admin")
+        for i in range(5)
+    ]
+
+    for c1, c2 in zip(collabs1, collabs2):
+        assert c1 == c2
+
+    for c1, c3 in zip(collabs1, collabs3):
+        assert c1 != c3
+
+def test_role_with_numeric_string():
+    """Test avec un rôle comme chaîne numérique"""
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="123"
+        )
+
+def test_collaboration_with_mixed_case_role():
+            """Test avec des rôles ayant des majuscules et minuscules mélangées"""
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user=100, role="AdMiN"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user=100, role="ViEwEr"
+                )
+
+def test_collaboration_with_special_characters_in_ids():
+            """Test avec des caractères spéciaux dans les IDs"""
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration="1!", id_conversation=10, id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation="10#", id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user="100$", role="admin"
+                )
+
+def test_collaboration_with_empty_strings_in_ids():
+            """Test avec des chaînes vides dans les IDs"""
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration="", id_conversation=10, id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation="", id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user="", role="admin"
+                )
+
+def test_collaboration_with_whitespace_in_ids():
+            """Test avec des espaces dans les IDs"""
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=" 1", id_conversation=10, id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation="10 ", id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user=" 100 ", role="admin"
+                )
+
+def test_collaboration_with_large_ids():
+            """Test avec des IDs très grands"""
+            large_id = 10**18
+            collab = Collaboration(
+                id_collaboration=large_id, id_conversation=large_id, id_user=large_id, role="admin"
+            )
+            assert collab.id_collaboration == large_id
+            assert collab.id_conversation == large_id
+            assert collab.id_user == large_id
+
+def test_collaboration_with_negative_and_zero_combination():
+            """Test avec une combinaison d'IDs négatifs et zéro"""
+            collab = Collaboration(
+                id_collaboration=-1, id_conversation=0, id_user=-100, role="viewer"
+            )
+            assert collab.id_collaboration == -1
+            assert collab.id_conversation == 0
+            assert collab.id_user == -100
+            assert collab.role == "viewer"
+
+def test_collaboration_with_non_ascii_role():
+            """Test avec un rôle contenant des caractères non-ASCII"""
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user=100, role="administrateur"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user=100, role="观众"
+                )
+
+def test_collaboration_with_duplicate_objects():
+            """Test que deux objets identiques sont égaux"""
+            collab1 = Collaboration(
+                id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+            )
+            collab2 = Collaboration(
+                id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+            )
+            assert collab1 == collab2
+
+def test_collaboration_with_different_roles():
+            """Test que deux collaborations avec des rôles différents ne sont pas égales"""
+            collab1 = Collaboration(
+                id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+            )
+            collab2 = Collaboration(
+                id_collaboration=1, id_conversation=10, id_user=100, role="viewer"
+            )
+            assert collab1 != collab2
+
+def test_collaboration_with_partial_none_ids():
+            """Test avec certains IDs à None"""
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=None, id_conversation=None, id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=None, id_user=None, role="admin"
+                )

@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional
 from src.Utils.log_decorator import log           # si ton fichier utils est à la racine du projet
 from src.DAO.DBConnector import DBConnection
-from src.Objet_Metier.Collaboration import Collaboration
+from src.ObjetMetier.Collaboration import Collaboration
 from src.Utils.Singleton import Singleton
 
 
@@ -88,7 +88,7 @@ class CollaborationDAO(metaclass=Singleton):
                     id_collaboration=res["id_collaboration"],
                     id_conversation=res["id_conversation"],
                     id_user=res["id_user"],
-                    role=res["role"],
+                    role=res["role"].lower(),  # Normalize role to lowercase
                 )
             return None
 
@@ -190,7 +190,7 @@ class CollaborationDAO(metaclass=Singleton):
                         id_collaboration=row["id_collaboration"],
                         id_conversation=row["id_conversation"],
                         id_user=row["id_user"],
-                        role=row["role"],
+                        role=row["role"].lower(),  # Normalize role to lowercase
                     )
                 )
 
@@ -222,7 +222,7 @@ class CollaborationDAO(metaclass=Singleton):
                         id_collaboration=row["id_collaboration"],
                         id_conversation=row["id_conversation"],
                         id_user=row["id_user"],
-                        role=row["role"],
+                        role=row["role"].lower(),  # Normalize role to lowercase
                     )
                 )
 
@@ -254,7 +254,7 @@ class CollaborationDAO(metaclass=Singleton):
                         id_collaboration=row["id_collaboration"],
                         id_conversation=row["id_conversation"],
                         id_user=row["id_user"],
-                        role=row["role"],
+                        role=row["role"].lower(),  # Normalize role to lowercase
                     )
                 )
 
