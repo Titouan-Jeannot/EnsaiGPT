@@ -202,17 +202,19 @@ def test_large_number_of_collaborations():
         assert collaborations[i].role == "viewer"
 
 
-def test_role_case_sensitivity():
-    with pytest.raises(ValueError):
-        Collaboration(id_collaboration=1, id_conversation=10, id_user=100, role="Admin")
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role="VIEWER"
-        )
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role="Writer"
-        )
+def test_case_insensitive_role():
+    collab1 = Collaboration(
+        id_collaboration=1, id_conversation=10, id_user=100, role="ADMIN"
+    )
+    collab2 = Collaboration(
+        id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+    )
+    collab3 = Collaboration(
+        id_collaboration=1, id_conversation=10, id_user=100, role="AdMiN"
+    )
+
+    assert collab1 == collab2
+    assert collab1 == collab3
 
 
 def test_whitespace_in_role():
@@ -326,15 +328,19 @@ def test_role_with_numeric_string():
             id_collaboration=1, id_conversation=10, id_user=100, role="123"
         )
 
-def test_collaboration_with_mixed_case_role():
-            """Test avec des rôles ayant des majuscules et minuscules mélangées"""
+def test_collaboration_with_string_ids():
+            """Test avec des IDs comme chaînes de caractères"""
             with pytest.raises(ValueError):
                 Collaboration(
-                    id_collaboration=1, id_conversation=10, id_user=100, role="AdMiN"
+                    id_collaboration="1", id_conversation=10, id_user=100, role="admin"
                 )
             with pytest.raises(ValueError):
                 Collaboration(
-                    id_collaboration=1, id_conversation=10, id_user=100, role="ViEwEr"
+                    id_collaboration=1, id_conversation="10", id_user=100, role="admin"
+                )
+            with pytest.raises(ValueError):
+                Collaboration(
+                    id_collaboration=1, id_conversation=10, id_user="100", role="admin"
                 )
 
 def test_collaboration_with_special_characters_in_ids():
