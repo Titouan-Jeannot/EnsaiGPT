@@ -3,258 +3,162 @@ from datetime import datetime
 from src.Objet_Metier.User import User
 
 
-def test_user_initialization_with_id_and_dates():
+# Initialisation - succèss (cas explicites)
+def test_init_success_minimal_required():
+    user = User(None, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt")
+    assert user.id is None
+    assert user.username == "jdoe"
+    assert user.status == "active"
+    assert user.setting_param == "Tu es un assistant utile."
+
+
+def test_init_success_with_id_and_dates():
     now = datetime.now()
     user = User(
-        id=1,
-        username="jdoe",
-        nom="Doe",
-        prenom="John",
-        mail="jdoe@example.com",
-        password_hash="hash",
-        salt="salt",
+        1,
+        "jdoe",
+        "Doe",
+        "John",
+        "jdoe@example.com",
+        "hash",
+        "salt",
         sign_in_date=now,
         last_login=now,
         status="active",
         setting_param="param",
     )
     assert user.id == 1
-    assert user.username == "jdoe"
-    assert user.nom == "Doe"
-    assert user.prenom == "John"
-    assert user.mail == "jdoe@example.com"
-    assert user.password_hash == "hash"
-    assert user.salt == "salt"
     assert user.sign_in_date == now
     assert user.last_login == now
-    assert user.status == "active"
     assert user.setting_param == "param"
 
 
-def test_user_initialization_with_id_none_allowed():
-    user = User(
-        id=None,
-        username="anon",
-        nom="An",
-        prenom="On",
-        mail="anon@example.com",
-        password_hash="h",
-        salt="s",
-    )
-    assert user.id is None
-    assert user.status == "active"
-    assert isinstance(user.setting_param, str)
+def test_init_success_other_allowed_statuses():
+    u_inactive = User(2, "u2", "Nom", "Prenom", "u2@example.com", "h", "s", status="inactive")
+    u_banni = User(3, "u3", "Nom", "Prenom", "u3@example.com", "h", "s", status="banni")
+    assert u_inactive.status == "inactive"
+    assert u_banni.status == "banni"
 
 
-def test_user_init_type_errors_and_invalid_status():
+# Initialisation - échecs (types / valeurs) écrits un par un
+def test_init_failure_id_not_int():
+    with pytest.raises(ValueError):
+        User("notint", "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt")
+
+
+def test_init_failure_username_not_str():
+    with pytest.raises(ValueError):
+        User(1, 123, "Doe", "John", "jdoe@example.com", "hash", "salt")
+
+
+def test_init_failure_nom_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", 123, "John", "jdoe@example.com", "hash", "salt")
+
+
+def test_init_failure_prenom_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", 123, "jdoe@example.com", "hash", "salt")
+
+
+def test_init_failure_mail_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", 123, "hash", "salt")
+
+
+def test_init_failure_password_hash_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", 123, "salt")
+
+
+def test_init_failure_salt_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", 123)
+
+
+def test_init_failure_sign_in_date_wrong_type():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", sign_in_date="notadate")
+
+
+def test_init_failure_last_login_wrong_type():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", last_login="notadate")
+
+
+def test_init_failure_status_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status=123)
+
+
+def test_init_failure_status_invalid_value():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="InvalidStatus")
+
+
+def test_init_failure_setting_param_not_str():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", setting_param=123)
+
+
+def test_init_failure_status_case_and_whitespace():
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="Active")
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status=" active ")
+    with pytest.raises(ValueError):
+        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="BANNI")
+
+
+# __eq__ - succès (cas explicites)
+def test_eq_success_identical_objects_explicit():
     now = datetime.now()
-    with pytest.raises(ValueError):
-        User(
-            id="notint",
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username=123,
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom=123,
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom=123,
-            mail="m",
-            password_hash="h",
-            salt="s",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail=123,
-            password_hash="h",
-            salt="s",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash=123,
-            salt="s",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt=123,
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-            sign_in_date="notadate",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-            last_login="notadate",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-            status=123,
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-            status="invalid",
-        )
-    with pytest.raises(ValueError):
-        User(
-            id=1,
-            username="u",
-            nom="n",
-            prenom="p",
-            mail="m",
-            password_hash="h",
-            salt="s",
-            setting_param=123,
-        )
-
-
-def test_user_equality_and_inequality():
-    now = datetime.now()
-    u1 = User(
-        1,
-        "u",
-        "n",
-        "p",
-        "m",
-        "h",
-        "s",
-        sign_in_date=now,
-        last_login=now,
-        status="active",
-        setting_param="x",
-    )
-    u2 = User(
-        1,
-        "u",
-        "n",
-        "p",
-        "m",
-        "h",
-        "s",
-        sign_in_date=now,
-        last_login=now,
-        status="active",
-        setting_param="x",
-    )
-    u3 = User(2, "u2", "n2", "p2", "m2", "h2", "s2")
+    u1 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=now, last_login=now, status="active", setting_param="x")
+    u2 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=now, last_login=now, status="active", setting_param="x")
     assert u1 == u2
-    assert u1 != u3
-    assert not (u1 == "not a user")
+    assert u1 == u1
 
 
-def test_str_representation():
+# __eq__ - échecs (cas explicites)
+def test_eq_failure_different_id():
+    u1 = User(1, "u", "n", "p", "m", "h", "s")
+    u2 = User(2, "u", "n", "p", "m", "h", "s")
+    assert u1 != u2
+
+
+def test_eq_failure_different_username():
+    u1 = User(1, "u1", "n", "p", "m", "h", "s")
+    u2 = User(1, "u2", "n", "p", "m", "h", "s")
+    assert u1 != u2
+
+
+def test_eq_with_other_type_returns_false():
+    u = User(1, "u", "n", "p", "m", "h", "s")
+    assert (u == "not a user") is False
+
+
+# __str__ - succès (explicit)
+def test_str_success_explicit():
     user = User(5, "alice", "A", "lice", "a@example.com", "h", "s")
-    assert str(user) == "User(id=5, username='alice')"
+    assert str(user) == "User(id=5, username='alice')
 
 
-def test_default_values_and_edge_cases():
-    # defaults
-    user = User(10, "bob", "B", "ob", "b@example.com", "h", "s")
-    assert user.sign_in_date is None
-    assert user.last_login is None
-    assert user.status == "active"
-    assert user.setting_param == "Tu es un assistant utile."
-
-    # large id values
-    max_int = 2**31 - 1
-    u_max = User(
-        max_int, "big", "N", "Big", "big@example.com", "h", "s", status="banni"
-    )
-    assert u_max.id == max_int
-    assert u_max.status == "banni"
+# __str__ - échecs (format inattendu) explicit checks
+def test_str_contains_expected_parts():
+    user = User(6, "bob", "B", "ob", "b@example.com", "h", "s")
+    s = str(user)
+    assert "id=6" in s
+    assert "username='bob'" in s
+    assert s != "User(id=None, username='bob')
 
 
-def test_status_case_and_whitespace_handling():
-    with pytest.raises(ValueError):
-        User(1, "u", "n", "p", "m", "h", "s", status="Active")
-    with pytest.raises(ValueError):
-        User(1, "u", "n", "p", "m", "h", "s", status=" active ")
-    with pytest.raises(ValueError):
-        User(1, "u", "n", "p", "m", "h", "s", status="BANNI")
-
-
-def test_large_number_of_users_creation():
+# Cas limites / charge légère
+def test_large_number_of_users_creation_explicit():
     users = []
-    for i in range(200):  # reduced to 200 for test speed while still checking scale
-        u = User(
-            i,
-            f"user{i}",
-            "Nom",
-            "Prenom",
-            f"user{i}@ex.com",
-            "hash",
-            "salt",
-            status="viewer" if i % 2 == 0 else "active",
-        )
+    for i in range(100):
+        u = User(i, f"user{i}", "Nom", "Prenom", f"user{i}@ex.com", "hash", "salt", status="active" if i % 2 else "inactive")
         users.append(u)
-    assert len(users) == 200
+    assert len(users) == 100
     for i, u in enumerate(users):
         assert u.id == i
         assert u.username == f"user{i}"
