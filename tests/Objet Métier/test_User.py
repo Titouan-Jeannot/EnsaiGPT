@@ -140,7 +140,7 @@ def test_eq_with_other_type_returns_false():
 # __str__ - succès (explicit)
 def test_str_success_explicit():
     user = User(5, "alice", "A", "lice", "a@example.com", "h", "s")
-    assert str(user) == "User(id=5, username='alice')
+    assert str(user) == "User(id=5, username='alice')"
 
 
 # __str__ - échecs (format inattendu) explicit checks
@@ -149,7 +149,7 @@ def test_str_contains_expected_parts():
     s = str(user)
     assert "id=6" in s
     assert "username='bob'" in s
-    assert s != "User(id=None, username='bob')
+    assert s != "User(id=None, username='bob')"
 
 
 # Cas limites / charge légère
