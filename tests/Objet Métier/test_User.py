@@ -214,6 +214,48 @@ def test_eq_failure_different_username():
     assert u1 != u2
 
 
+def test_eq_failure_different_nom():
+    u1 = User(1, "u", "nom1", "p", "m", "h", "s")
+    u2 = User(1, "u", "nom2", "p", "m", "h", "s")
+    assert u1 != u2
+
+
+def test_eq_failure_different_prenom():
+    u1 = User(1, "u", "n", "prenom1", "m", "h", "s")
+    u2 = User(1, "u", "n", "prenom2", "m", "h", "s")
+    assert u1 != u2
+
+
+def test_eq_failure_different_mail():
+    u1 = User(1, "u", "n", "p", "mail1@example.com", "h", "s")
+    u2 = User(1, "u", "n", "p", "mail2@example.com", "h", "s")
+    assert u1 != u2
+
+
+def test_eq_failure_different_password_hash_and_salt():
+    u1 = User(1, "u", "n", "p", "m", "hash1", "salt1")
+    u2 = User(1, "u", "n", "p", "m", "hash2", "salt2")
+    assert u1 != u2
+
+
+def test_eq_failure_different_dates():
+    from datetime import datetime, timedelta
+
+    now = datetime.now()
+    later = now + timedelta(seconds=1)
+    u1 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=now, last_login=now)
+    u2 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=later, last_login=now)
+    assert u1 != u2
+    u3 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=now, last_login=later)
+    assert u1 != u3
+
+
+def test_eq_failure_different_setting_param():
+    u1 = User(1, "u", "n", "p", "m", "h", "s", setting_param="x")
+    u2 = User(1, "u", "n", "p", "m", "h", "s", setting_param="y")
+    assert u1 != u2
+
+
 def test_eq_with_other_type_returns_false():
     u = User(1, "u", "n", "p", "m", "h", "s")
     assert (u == "not a user") is False
