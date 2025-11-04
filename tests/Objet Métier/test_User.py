@@ -34,7 +34,9 @@ def test_init_success_with_id_and_dates():
 
 
 def test_init_success_other_allowed_statuses():
-    u_inactive = User(2, "u2", "Nom", "Prenom", "u2@example.com", "h", "s", status="inactive")
+    u_inactive = User(
+        2, "u2", "Nom", "Prenom", "u2@example.com", "h", "s", status="inactive"
+    )
     u_banni = User(3, "u3", "Nom", "Prenom", "u3@example.com", "h", "s", status="banni")
     assert u_inactive.status == "inactive"
     assert u_banni.status == "banni"
@@ -78,12 +80,30 @@ def test_init_failure_salt_not_str():
 
 def test_init_failure_sign_in_date_wrong_type():
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", sign_in_date="notadate")
+        User(
+            1,
+            "jdoe",
+            "Doe",
+            "John",
+            "jdoe@example.com",
+            "hash",
+            "salt",
+            sign_in_date="notadate",
+        )
 
 
 def test_init_failure_last_login_wrong_type():
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", last_login="notadate")
+        User(
+            1,
+            "jdoe",
+            "Doe",
+            "John",
+            "jdoe@example.com",
+            "hash",
+            "salt",
+            last_login="notadate",
+        )
 
 
 def test_init_failure_status_not_str():
@@ -93,28 +113,90 @@ def test_init_failure_status_not_str():
 
 def test_init_failure_status_invalid_value():
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="InvalidStatus")
+        User(
+            1,
+            "jdoe",
+            "Doe",
+            "John",
+            "jdoe@example.com",
+            "hash",
+            "salt",
+            status="InvalidStatus",
+        )
 
 
 def test_init_failure_setting_param_not_str():
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", setting_param=123)
+        User(
+            1,
+            "jdoe",
+            "Doe",
+            "John",
+            "jdoe@example.com",
+            "hash",
+            "salt",
+            setting_param=123,
+        )
 
 
 def test_init_failure_status_case_and_whitespace():
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="Active")
+        User(
+            1,
+            "jdoe",
+            "Doe",
+            "John",
+            "jdoe@example.com",
+            "hash",
+            "salt",
+            status="Active",
+        )
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status=" active ")
+        User(
+            1,
+            "jdoe",
+            "Doe",
+            "John",
+            "jdoe@example.com",
+            "hash",
+            "salt",
+            status=" active ",
+        )
     with pytest.raises(ValueError):
-        User(1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="BANNI")
+        User(
+            1, "jdoe", "Doe", "John", "jdoe@example.com", "hash", "salt", status="BANNI"
+        )
 
 
 # __eq__ - succès (cas explicites)
 def test_eq_success_identical_objects_explicit():
     now = datetime.now()
-    u1 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=now, last_login=now, status="active", setting_param="x")
-    u2 = User(1, "u", "n", "p", "m", "h", "s", sign_in_date=now, last_login=now, status="active", setting_param="x")
+    u1 = User(
+        1,
+        "u",
+        "n",
+        "p",
+        "m",
+        "h",
+        "s",
+        sign_in_date=now,
+        last_login=now,
+        status="active",
+        setting_param="x",
+    )
+    u2 = User(
+        1,
+        "u",
+        "n",
+        "p",
+        "m",
+        "h",
+        "s",
+        sign_in_date=now,
+        last_login=now,
+        status="active",
+        setting_param="x",
+    )
     assert u1 == u2
     assert u1 == u1
 
@@ -156,7 +238,16 @@ def test_str_contains_expected_parts():
 def test_large_number_of_users_creation_explicit():
     users = []
     for i in range(100):
-        u = User(i, f"user{i}", "Nom", "Prenom", f"user{i}@ex.com", "hash", "salt", status="active" if i % 2 else "inactive")
+        u = User(
+            i,
+            f"user{i}",
+            "Nom",
+            "Prenom",
+            f"user{i}@ex.com",
+            "hash",
+            "salt",
+            status="active" if i % 2 else "inactive",
+        )
         users.append(u)
     assert len(users) == 100
     for i, u in enumerate(users):
