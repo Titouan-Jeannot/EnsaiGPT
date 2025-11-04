@@ -5,9 +5,9 @@ from typing import List, Optional
 from datetime import datetime
 
 try:
-    from Objet_Metier.Message import Message
+    from ObjetMetier.Message import Message
 except Exception:
-    from src.Objet_Metier.Message import Message
+    from src.ObjetMetier.Message import Message
 
 # ajustement : il faut utiliser un singleton de connexion partagé et harmonisé entre les DAO.
 class MessageDAO:

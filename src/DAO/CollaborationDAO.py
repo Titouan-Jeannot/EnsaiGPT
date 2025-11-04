@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional
 from src.Utils.log_decorator import log           # si ton fichier utils est à la racine du projet
 from src.DAO.DBConnector import DBConnection
-from src.Objet_Metier.Collaboration import Collaboration
+from src.ObjetMetier.Collaboration import Collaboration
 from src.Utils.Singleton import Singleton
 
 

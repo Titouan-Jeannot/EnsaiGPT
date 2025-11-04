@@ -7,10 +7,10 @@ import re
 from typing import Optional
 
 try:
-    from Objet_Metier.User import User
+    from ObjetMetier.User import User
     from DAO.User_DAO import UserDAO
 except Exception:
-    from src.Objet_Metier.User import User
+    from src.ObjetMetier.User import User
     from src.DAO.User_DAO import UserDAO
 
 
