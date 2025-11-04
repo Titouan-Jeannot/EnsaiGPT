@@ -1,42 +1,31 @@
+"""Définition de l'objet métier Conversation."""
+from __future__ import annotations
+
+from dataclasses import dataclass
 from datetime import datetime
 
 
+@dataclass
 class Conversation:
-     """
-    Représente une conversation dans le système.
+    """Représente une conversation persistée dans la base de données."""
 
-    Attributs
-    ----------
-    id_conversation : int
-        Identifiant unique de la conversation.
-    titre : str
-        Titre de la conversation.
-    created_at : datetime
-        Date et heure de création de la conversation.
-    setting_conversation : str
-        Paramètres ou contexte lié à la conversation.
-    token_viewer : str
-        Jeton permettant d’accéder à la conversation en lecture seule.
-    token_writter : str
-        Jeton permettant d’écrire dans la conversation.
-    is_active : bool
-        Indique si la conversation est encore active (True) ou archivée (False).
-    """
-    def __init__(self,
-                id_conversation: int,
-                titre: str,
-                created_at: datetime,
-                setting_conversation: str,
-                token_viewer: str,
-                token_writter: str,
-                is_active: bool):
-        """
-        Initialise une nouvelle instance de Conversation.
-        """
-        self.id_conversation = id_conversation
-        self.titre = titre
-        self.created_at = created_at
-        self.setting_conversation = setting_conversation
-        self.token_viewer = token_viewer
-        self.token_writter = token_writter
-        self.is_active = is_active
+    id_conversation: int | None
+    titre: str
+    created_at: datetime
+    setting_conversation: str
+    token_viewer: str
+    token_writter: str
+    is_active: bool
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Conversation":
+        """Fabrique une conversation à partir d'un dictionnaire."""
+        return cls(
+            id_conversation=data.get("id_conversation"),
+            titre=data.get("titre", ""),
+            created_at=data.get("created_at"),
+            setting_conversation=data.get("setting_conversation", ""),
+            token_viewer=data.get("token_viewer", ""),
+            token_writter=data.get("token_writter", ""),
+            is_active=bool(data.get("is_active", True)),
+        )
