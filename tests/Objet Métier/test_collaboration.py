@@ -12,6 +12,17 @@ def test_collaboration_initialization():
     assert collaboration.role == "admin"
 
 
+def test_collaboration_initialization_without_id():
+    """Test qu'on peut créer une collaboration sans id_collaboration"""
+    collaboration = Collaboration(
+        id_collaboration=None, id_conversation=10, id_user=100, role="admin"
+    )
+    assert collaboration.id_collaboration is None
+    assert collaboration.id_conversation == 10
+    assert collaboration.id_user == 100
+    assert collaboration.role == "admin"
+
+
 def test_collaboration_init_type_errors():
     with pytest.raises(ValueError):
         Collaboration(
@@ -27,10 +38,13 @@ def test_collaboration_init_type_errors():
         )
     with pytest.raises(ValueError):
         Collaboration(id_collaboration=1, id_conversation=10, id_user=100, role=123)
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=None, id_conversation=10, id_user=100, role="admin"
-        )
+
+    # ⚠️ SUPPRIMÉ : id_collaboration=None est maintenant valide
+    # with pytest.raises(ValueError):
+    #     Collaboration(
+    #         id_collaboration=None, id_conversation=10, id_user=100, role="admin"
+    #     )
+
     with pytest.raises(ValueError):
         Collaboration(
             id_collaboration=1, id_conversation=None, id_user=100, role="admin"
@@ -58,6 +72,22 @@ def test_collaboration_equality():
     assert collab1 != collab3
 
 
+def test_collaboration_equality_with_none_id():
+    """Test l'égalité avec id_collaboration=None"""
+    collab1 = Collaboration(
+        id_collaboration=None, id_conversation=10, id_user=100, role="admin"
+    )
+    collab2 = Collaboration(
+        id_collaboration=None, id_conversation=10, id_user=100, role="admin"
+    )
+    collab3 = Collaboration(
+        id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+    )
+
+    assert collab1 == collab2
+    assert collab1 != collab3
+
+
 def test_str():
     collab = Collaboration(
         id_collaboration=1, id_conversation=10, id_user=100, role="admin"
@@ -66,6 +96,25 @@ def test_str():
         str(collab)
         == "Collaboration(id_collaboration=1, id_conversation=10, id_user=100, role='admin')"
     )
+
+
+def test_str_with_none_id():
+    """Test la représentation string avec id_collaboration=None"""
+    collab = Collaboration(
+        id_collaboration=None, id_conversation=10, id_user=100, role="admin"
+    )
+    assert (
+        str(collab)
+        == "Collaboration(id_collaboration=None, id_conversation=10, id_user=100, role='admin')"
+    )
+
+
+def test_repr():
+    """Test que __repr__ retourne la même chose que __str__"""
+    collab = Collaboration(
+        id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+    )
+    assert repr(collab) == str(collab)
 
 
 def test_collaboration_edge_cases():
@@ -119,10 +168,13 @@ def test_non_integer_ids():
 
 
 def test_none_parameters():
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=None, id_conversation=10, id_user=100, role="admin"
-        )
+    # ⚠️ MODIFIÉ : id_collaboration=None est maintenant valide
+    collab = Collaboration(
+        id_collaboration=None, id_conversation=10, id_user=100, role="admin"
+    )
+    assert collab.id_collaboration is None
+
+    # Les autres None restent invalides
     with pytest.raises(ValueError):
         Collaboration(
             id_collaboration=1, id_conversation=None, id_user=100, role="admin"
@@ -176,3 +228,35 @@ def test_whitespace_in_role():
         Collaboration(
             id_collaboration=1, id_conversation=10, id_user=100, role="\nwriter"
         )
+
+
+def test_inequality_with_different_types():
+    """Test que la comparaison avec d'autres types retourne False"""
+    collab = Collaboration(
+        id_collaboration=1, id_conversation=10, id_user=100, role="admin"
+    )
+    assert collab != "not a collaboration"
+    assert collab != 123
+    assert collab != None
+    assert collab != {"id": 1}
+
+
+def test_negative_ids():
+    """Test avec des IDs négatifs (valides car ce sont des int)"""
+    collab = Collaboration(
+        id_collaboration=-1, id_conversation=-10, id_user=-100, role="admin"
+    )
+    assert collab.id_collaboration == -1
+    assert collab.id_conversation == -10
+    assert collab.id_user == -100
+
+
+def test_zero_ids():
+    """Test avec des IDs à zéro"""
+    collab = Collaboration(
+        id_collaboration=0, id_conversation=0, id_user=0, role="banned"
+    )
+    assert collab.id_collaboration == 0
+    assert collab.id_conversation == 0
+    assert collab.id_user == 0
+    assert collab.role == "banned"
