@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
-from src.DAO.CollaborationDAO import CollaborationDAO
-from src.Objet_Metier.Collaboration import Collaboration
+from DAO.CollaborationDAO import CollaborationDAO
+from Objet_Metier.Collaboration import Collaboration
 
 class TestCollaborationDAO:
 
