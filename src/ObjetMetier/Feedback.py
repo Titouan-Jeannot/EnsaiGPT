@@ -1,6 +1,7 @@
 from datetime import datetime
 
-class Feedback :
+
+class Feedback:
 
     def __init__(self, id_feedback, id_user, id_message, is_like, comment, create_at):
         """
@@ -19,12 +20,12 @@ class Feedback :
         -----------
         - ValueError : si un des paramètres est None
         """
-        if id_feedback is None or not isinstance(id_feedback, int):
-            raise ValueError("id_feedback must be a non-null integer")
-        if id_user is None or not isinstance(id_user, int):
-            raise ValueError("id_user must be a non-null integer")
-        if id_message is None or not isinstance(id_message, int):
-            raise ValueError("id_message must be a non-null integer")
+        if id_feedback is None or not isinstance(id_feedback, int) or id_feedback < 0:
+            raise ValueError("id_feedback must be a non-null positive integer")
+        if id_user is None or not isinstance(id_user, int) or id_user < 0:
+            raise ValueError("id_user must be a non-null positive integer")
+        if id_message is None or not isinstance(id_message, int) or id_message < 0:
+            raise ValueError("id_message must be a non-null positive integer")
         if is_like is None or not isinstance(is_like, bool):
             raise ValueError("is_like must be a non-null boolean")
         if comment is not None and not isinstance(comment, str):

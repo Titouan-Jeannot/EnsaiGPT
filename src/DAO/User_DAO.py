@@ -4,9 +4,9 @@ from psycopg2 import IntegrityError, DatabaseError
 
 # Import User from the project domain model
 try:
-    from Objet_Metier.User import User
+    from ObjetMetier.User import User
 except Exception:
-    from src.Objet_Metier.User import User
+    from src.ObjetMetier.User import User
 
 
 class UserDAO:

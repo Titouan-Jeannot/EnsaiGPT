@@ -1,5 +1,5 @@
 import pytest
-from src.Objet_Metier.Collaboration import Collaboration
+from src.ObjetMetier.Collaboration import Collaboration
 
 
 def test_collaboration_initialization():
@@ -283,6 +283,20 @@ def test_role_with_special_characters():
             id_collaboration=1, id_conversation=10, id_user=100, role="writ$er"
         )
 
+def test_role_with_leading_trailing_spaces():
+    """Test avec des rôles ayant des espaces en début/fin"""
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role=" admin"
+        )
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role="viewer "
+        )
+    with pytest.raises(ValueError):
+        Collaboration(
+            id_collaboration=1, id_conversation=10, id_user=100, role=" writer "
+        )
 
 def test_multiple_collaborations_equality():
     """Test l'égalité entre plusieurs collaborations dans une liste"""

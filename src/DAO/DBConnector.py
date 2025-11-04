@@ -1,50 +1,49 @@
+# src/dao/db_connection.py
 import os
-from typing import Literal, Optional, Union
+from contextlib import contextmanager
+from psycopg2.pool import SimpleConnectionPool
+from psycopg2.extras import RealDictConnection  # <<- clé : impose RealDictCursor par défaut
+from dotenv import load_dotenv
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL manquant dans .env")
 
+# Pool global : chaque connexion est une RealDictConnection
+POOL = SimpleConnectionPool(
+    minconn=1,
+    maxconn=10,
+    dsn=DATABASE_URL,
+    connect_timeout=10,
+    connection_factory=RealDictConnection,  # <<- IMPORTANT
+)
 
-class DBConnector:
-    def __init__(self, config=None):
-        if config is not None:
-            self.host = config["host"]
-            self.port = config["post"]
-            self.database = config["database"]
-            self.user = config["user"]
-            self.password = config["password"]
-            self.schema = config["schema"]
-        else:
-            self.host = os.environ["POSTGRES_HOST"]
-            self.port = os.environ["POSTGRES_PORT"]
-            self.database = os.environ["POSTGRES_DATABASE"]
-            self.user = os.environ["POSTGRES_USER"]
-            self.password = os.environ["POSTGRES_PASSWORD"]
-            self.schema = os.environ["POSTGRES_SCHEMA"]
-
-    def sql_query(
-        self,
-        query: str,
-        data: Optional[Union[tuple, list, dict]] = None,
-        return_type: Union[Literal["one"], Literal["all"]] = "one",
-    ):
+class DBConnection:
+    """
+    Fournit une connexion transactionnelle depuis le pool.
+    Usage existant conservé :
+        with DBConnection().connection as connection:
+            with connection.cursor() as cursor:  # <-- renvoie un RealDictCursor automatiquement
+                cursor.execute("SELECT 1 AS ok;")
+                row = cursor.fetchone()  # {'ok': 1}
+    """
+    @property
+    @contextmanager
+    def connection(self):
+        conn = POOL.getconn()
         try:
-            with psycopg2.connect(
-                host=self.host,
-                port=self.port,
-                database=self.database,
-                user=self.user,
-                password=self.password,
-                options=f"-c search_path={self.schema}",
-                cursor_factory=RealDictCursor,
-            ) as connection:
-                with connection.cursor() as cursor:
-                    cursor.execute(query, data)
-                    if return_type == "one":
-                        return cursor.fetchone()
-                    if return_type == "all":
-                        return cursor.fetchall()
-        except Exception as e:
-            print("ERROR")
-            print(e)
-            raise e
+            conn.autocommit = False
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            POOL.putconn(conn)
+
+def close_pool():
+    try:
+        POOL.closeall()
+    except Exception:
+        pass

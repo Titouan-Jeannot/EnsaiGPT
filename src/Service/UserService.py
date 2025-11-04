@@ -1,11 +1,11 @@
 # Service pour la gestion des utilisateurs
 
 try:
-    from Objet_Metier.User import User
+    from ObjetMetier.User import User
     from DAO.User_DAO import UserDAO
     from Service.AuthService import AuthService
 except Exception:
-    from src.Objet_Metier.User import User
+    from src.ObjetMetier.User import User
     from src.DAO.User_DAO import UserDAO
     from src.Service.AuthService import AuthService
 import re
