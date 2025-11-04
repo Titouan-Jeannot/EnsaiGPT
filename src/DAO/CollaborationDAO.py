@@ -190,7 +190,7 @@ class CollaborationDAO(metaclass=Singleton):
                         id_collaboration=row["id_collaboration"],
                         id_conversation=row["id_conversation"],
                         id_user=row["id_user"],
-                        role=row["role"],
+                        role=row["role"].lower(),  # Normalize role to lowercase
                     )
                 )
 

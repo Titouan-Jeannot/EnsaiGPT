@@ -1,37 +1,30 @@
+import pytest
 from unittest.mock import MagicMock, patch
 from src.DAO.CollaborationDAO import CollaborationDAO
 from src.ObjetMetier.Collaboration import Collaboration
 
+
 class TestCollaborationDAO:
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_create_success(self, mock_db_connection):
-        # Arrange
         mock_cursor = MagicMock()
         mock_cursor.fetchone.return_value = {"id_collaboration": 1}
 
         mock_connection = MagicMock()
         mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
-
         mock_db_connection.return_value.connection.__enter__.return_value = mock_connection
 
         dao = CollaborationDAO()
-        collaboration = Collaboration(
-            id_collaboration=0,
-            id_conversation=10,
-            id_user=100,
-            role="ADMIN"
-        )
+        collaboration = Collaboration(0, 10, 100, "ADMIN")
 
-        # Act
         result = dao.create(collaboration)
 
-        # Assert
         assert result is True
         assert collaboration.id_collaboration == 1
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_create_exception(self, mock_db_connection):
         mock_cursor = MagicMock()
         mock_cursor.execute.side_effect = Exception("DB Error")
@@ -44,16 +37,17 @@ class TestCollaborationDAO:
         collaboration = Collaboration(0, 10, 100, "ADMIN")
 
         result = dao.create(collaboration)
-        assert result is False  # ta méthode gère déjà l'exception et retourne False
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+        assert result is False
+
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_read_found(self, mock_db_connection):
         mock_cursor = MagicMock()
         mock_cursor.fetchone.return_value = {
             "id_collaboration": 1,
             "id_conversation": 10,
             "id_user": 100,
-            "role": "ADMIN"
+            "role": "ADMIN",
         }
 
         mock_connection = MagicMock()
@@ -61,13 +55,13 @@ class TestCollaborationDAO:
         mock_db_connection.return_value.connection.__enter__.return_value = mock_connection
 
         dao = CollaborationDAO()
-        collaboration = dao.read(1)
+        collab = dao.read(1)
 
-        assert collaboration is not None
-        assert collaboration.id_collaboration == 1
+        assert isinstance(collab, Collaboration)
+        assert collab.id_collaboration == 1
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_read_not_found(self, mock_db_connection):
         mock_cursor = MagicMock()
         mock_cursor.fetchone.return_value = None
@@ -77,32 +71,29 @@ class TestCollaborationDAO:
         mock_db_connection.return_value.connection.__enter__.return_value = mock_connection
 
         dao = CollaborationDAO()
-        collaboration = dao.read(999)
+        collab = dao.read(999)
 
-        assert collaboration is None
+        assert collab is None
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
-    def test_find_by_user(self, mock_db_connection):
+    @patch("src.DAO.CollaborationDAO.DBConnection")
+    def test_update_success(self, mock_db_connection):
         mock_cursor = MagicMock()
-        mock_cursor.fetchall.return_value = [
-            {"id_collaboration": 1, "id_conversation": 10, "id_user": 100, "role": "ADMIN"},
-            {"id_collaboration": 2, "id_conversation": 11, "id_user": 100, "role": "WRITER"}
-        ]
+        mock_cursor.rowcount = 1
 
         mock_connection = MagicMock()
         mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
         mock_db_connection.return_value.connection.__enter__.return_value = mock_connection
 
         dao = CollaborationDAO()
-        collaborations = dao.find_by_user(100)
+        collab = Collaboration(1, 10, 100, "WRITER")
 
-        assert len(collaborations) == 2
-        assert collaborations[0].id_collaboration == 1
-        assert collaborations[1].id_collaboration == 2
+        result = dao.update(collab)
+
+        assert result is True
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_delete_success(self, mock_db_connection):
         mock_cursor = MagicMock()
         mock_cursor.rowcount = 1
@@ -117,24 +108,27 @@ class TestCollaborationDAO:
         assert result is True
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
-    def test_update_success(self, mock_db_connection):
+    @patch("src.DAO.CollaborationDAO.DBConnection")
+    def test_find_by_user(self, mock_db_connection):
         mock_cursor = MagicMock()
-        mock_cursor.rowcount = 1
+        mock_cursor.fetchall.return_value = [
+            {"id_collaboration": 1, "id_conversation": 10, "id_user": 100, "role": "ADMIN"},
+            {"id_collaboration": 2, "id_conversation": 11, "id_user": 100, "role": "WRITER"},
+        ]
 
         mock_connection = MagicMock()
         mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
         mock_db_connection.return_value.connection.__enter__.return_value = mock_connection
 
         dao = CollaborationDAO()
-        collaboration = Collaboration(1, 10, 100, "WRITER")
+        collaborations = dao.find_by_user(100)
 
-        result = dao.update(collaboration)
-
-        assert result is True
+        assert len(collaborations) == 2
+        assert collaborations[0].role == "ADMIN"
+        assert collaborations[1].role == "WRITER"
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_update_role_success(self, mock_db_connection):
         mock_cursor = MagicMock()
         mock_cursor.rowcount = 1
@@ -144,7 +138,17 @@ class TestCollaborationDAO:
         mock_db_connection.return_value.connection.__enter__.return_value = mock_connection
 
         dao = CollaborationDAO()
-        result = dao.update_role(1, "writer")
+
+        # Note : la méthode convertit le rôle via .strip().upper()
+        result = dao.update_role(1, " writer ")
 
         assert result is True
         mock_cursor.execute.assert_called_once()
+
+    @patch("src.DAO.CollaborationDAO.DBConnection")
+    def test_update_role_invalid_role(self, mock_db_connection):
+        dao = CollaborationDAO()
+
+        # Rôle non valide → ValueError attendu
+        with pytest.raises(ValueError):
+            dao.update_role(1, "not_a_role")
