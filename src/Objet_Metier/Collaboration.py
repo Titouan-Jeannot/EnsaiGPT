@@ -58,10 +58,10 @@ class Collaboration:
         if not isinstance(other, Collaboration):
             return False
         return (
-            self.id_collaboration == other.id_collaboration and
-            self.id_conversation == other.id_conversation and
-            self.id_user == other.id_user and
-            self.role == other.role
+            self.id_collaboration == other.id_collaboration
+            and self.id_conversation == other.id_conversation
+            and self.id_user == other.id_user
+            and self.role == other.role
         )
 
     def __str__(self):

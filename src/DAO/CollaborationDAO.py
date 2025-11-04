@@ -372,6 +372,8 @@ class CollaborationDao(metaclass=Singleton):
     def supprimer_par_conversation_et_utilisateur(self, id_conversation: int, id_user: int) -> bool:
         """Supprimer une collaboration par conversation et utilisateur
 
+        ajustement : utile pour qu'un utilisateur quitte une conversation
+
         Parameters
         ----------
         id_conversation : int
@@ -407,6 +409,8 @@ class CollaborationDao(metaclass=Singleton):
     @log
     def compter_par_conversation(self, id_conversation: int) -> int:
         """Compter le nombre de collaborateurs dans une conversation
+
+        ajustement : utile pour des statistiques
 
         Parameters
         ----------
