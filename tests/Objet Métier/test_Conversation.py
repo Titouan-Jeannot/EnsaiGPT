@@ -1,211 +1,172 @@
-import unittest
-import importlib
-import inspect
+# tests/Objet Métier/test_Conversation.py
+import pytest
+from datetime import datetime
+from src.Objet_Metier.Conversation import Conversation
 
 
-class TestConversation(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Try several common module names; skip tests if Conversation cannot be imported.
-        candidates = [
-            "conversation",
-            "conversation_module",
-            "ObjetMetier.conversation",
-            "objet_metier.conversation",
-            "Objet_Metier.conversation",
-        ]
-        mod = None
-        for name in candidates:
-            try:
-                mod = importlib.import_module(name)
-                break
-            except Exception:
-                continue
-        if mod is None:
-            raise unittest.SkipTest(
-                "Impossible d'importer le module contenant Conversation. "
-                "Ajoutez le module au PYTHONPATH ou adaptez le nom dans le test."
-            )
-        cls.Conversation = getattr(mod, "Conversation", None)
-        if cls.Conversation is None or not inspect.isclass(cls.Conversation):
-            raise unittest.SkipTest(
-                "La classe Conversation n'a pas été trouvée dans le module importé."
-            )
+def test_conversation_initialization():
+    conv = Conversation(
+        id_conversation=1,
+        titre="Projet ENSAI",
+        created_at=datetime.now(),
+        setting_conversation="fr-FR|temperature=0.2",
+        token_viewer="viewer-token-123",
+        token_writter="writer-token-456",
+        is_active=True,
+    )
+    assert conv.id_conversation == 1
+    assert conv.titre == "Projet ENSAI"
+    assert isinstance(conv.created_at, datetime)
+    assert conv.setting_conversation == "fr-FR|temperature=0.2"
+    assert conv.token_viewer == "viewer-token-123"
+    assert conv.token_writter == "writer-token-456"
+    assert conv.is_active is True
 
-    # Helper: find a callable to add a message
-    def _find_add(self, conv):
-        names = [
-            "add_message",
-            "add",
-            "post_message",
-            "send_message",
-            "send",
-            "append_message",
-        ]
-        for n in names:
-            if hasattr(conv, n) and callable(getattr(conv, n)):
-                return getattr(conv, n)
-        self.skipTest(
-            "Aucune méthode d'ajout de message trouvée (expected one of {}).".format(
-                names
-            )
+
+def test_conversation_init_type_errors():
+    now = datetime.now()
+    # id_conversation doit être int
+    with pytest.raises(ValueError):
+        Conversation("notint", "Titre", now, "cfg", "tv", "tw", True)
+    # titre doit être str
+    with pytest.raises(ValueError):
+        Conversation(1, 123, now, "cfg", "tv", "tw", True)
+    # created_at doit être datetime
+    with pytest.raises(ValueError):
+        Conversation(1, "Titre", "notdatetime", "cfg", "tv", "tw", True)
+    # setting_conversation doit être str
+    with pytest.raises(ValueError):
+        Conversation(1, "Titre", now, 42, "tv", "tw", True)
+    # token_viewer doit être str
+    with pytest.raises(ValueError):
+        Conversation(1, "Titre", now, "cfg", 999, "tw", True)
+    # token_writter doit être str
+    with pytest.raises(ValueError):
+        Conversation(1, "Titre", now, "cfg", "tv", None, True)
+    # is_active doit être bool
+    with pytest.raises(ValueError):
+        Conversation(1, "Titre", now, "cfg", "tv", "tw", "notbool")
+
+
+def test_conversation_equality_like():
+    """Égalité logique: on compare champ à champ (pas de __eq__ défini dans la classe)."""
+    now = datetime.now()
+    c1 = Conversation(1, "Titre", now, "cfg", "tv", "tw", True)
+    c2 = Conversation(1, "Titre", now, "cfg", "tv", "tw", True)
+    c3 = Conversation(2, "Autre", now, "cfg2", "tv2", "tw2", False)
+
+    # champ à champ pour c1 vs c2 (identiques)
+    for attr in (
+        "id_conversation",
+        "titre",
+        "created_at",
+        "setting_conversation",
+        "token_viewer",
+        "token_writter",
+        "is_active",
+    ):
+        assert getattr(c1, attr) == getattr(c2, attr)
+
+    # au moins une différence entre c1 et c3
+    diffs = [
+        getattr(c1, attr) != getattr(c3, attr)
+        for attr in (
+            "id_conversation",
+            "titre",
+            "created_at",
+            "setting_conversation",
+            "token_viewer",
+            "token_writter",
+            "is_active",
         )
-
-    # Helper: get messages container/list
-    def _get_messages(self, conv):
-        # prefer getter methods
-        getters = [
-            "get_messages",
-            "messages",
-            "get_history",
-            "history",
-            "messages_list",
-            "messages",
-        ]
-        for g in getters:
-            if hasattr(conv, g):
-                attr = getattr(conv, g)
-                if callable(attr):
-                    return attr()
-                else:
-                    return attr
-        self.skipTest(
-            "Aucun accès aux messages trouvé (expected one of {}).".format(getters)
-        )
-
-    def test_creation_default(self):
-        conv = self.Conversation()
-        self.assertIsNotNone(conv, "Création d'une Conversation devrait réussir")
-
-    def test_add_message_and_retrieve(self):
-        conv = self.Conversation()
-        add = self._find_add(conv)
-        # try different common signatures
-        try:
-            add("alice", "Bonjour")
-        except TypeError:
-            # maybe signature is (content,) only
-            try:
-                add("Bonjour")
-            except TypeError:
-                # maybe signature requires a dict/message object
-                try:
-                    add({"author": "alice", "content": "Bonjour"})
-                except TypeError:
-                    self.skipTest(
-                        "Impossible d'appeler la méthode d'ajout de message avec des signatures communes."
-                    )
-        messages = self._get_messages(conv)
-        # Expect at least one message stored
-        self.assertTrue(
-            messages is not None and len(messages) >= 1,
-            "Le message ajouté doit apparaître dans l'historique",
-        )
-
-    def test_participants_tracking_optional(self):
-        conv = self.Conversation()
-        add = self._find_add(conv)
-        # add messages from two participants
-        try:
-            add("alice", "Hi")
-            add("bob", "Hello")
-        except TypeError:
-            try:
-                add("Hi")
-                add("Hello")
-            except TypeError:
-                try:
-                    add({"author": "alice", "content": "Hi"})
-                    add({"author": "bob", "content": "Hello"})
-                except TypeError:
-                    self.skipTest(
-                        "Impossible d'appeler add pour tester les participants."
-                    )
-        # If conversation exposes participants, verify them
-        possible_parts = ["participants", "get_participants", "users"]
-        for p in possible_parts:
-            if hasattr(conv, p):
-                val = getattr(conv, p)
-                participants = val() if callable(val) else val
-                self.assertTrue(
-                    "alice" in participants or "bob" in participants,
-                    "La liste des participants devrait contenir les auteurs ajoutés",
-                )
-                return
-        # If no participants API, consider test passed (optional feature)
-        self.skipTest("Aucune API de participants détectée — test optionnel ignoré.")
-
-    def test_serialization_roundtrip_if_supported(self):
-        conv = self.Conversation()
-        add = self._find_add(conv)
-        try:
-            add("alice", "Roundtrip")
-        except TypeError:
-            try:
-                add("Roundtrip")
-            except TypeError:
-                try:
-                    add({"author": "alice", "content": "Roundtrip"})
-                except TypeError:
-                    self.skipTest(
-                        "Impossible d'ajouter un message pour tester la sérialisation."
-                    )
-        # Check for to_dict / from_dict
-        if hasattr(conv, "to_dict") and hasattr(self.Conversation, "from_dict"):
-            data = conv.to_dict()
-            self.assertIsInstance(data, dict, "to_dict doit retourner un dictionnaire")
-            conv2 = self.Conversation.from_dict(data)
-            # If equality defined, use it; otherwise compare serialized forms
-            if hasattr(conv, "__eq__"):
-                self.assertEqual(
-                    conv, conv2, "L'objet re-créé doit être égal à l'original"
-                )
-            else:
-                self.assertEqual(
-                    conv.to_dict(),
-                    conv2.to_dict(),
-                    "Les représentations dict doivent être identiques après roundtrip",
-                )
-        else:
-            self.skipTest(
-                "Sérialisation (to_dict/from_dict) non implémentée — test ignoré."
-            )
-
-    def test_message_structure_contains_expected_fields(self):
-        conv = self.Conversation()
-        add = self._find_add(conv)
-        try:
-            add("alice", "Inspect")
-        except TypeError:
-            try:
-                add("Inspect")
-            except TypeError:
-                try:
-                    add({"author": "alice", "content": "Inspect"})
-                except TypeError:
-                    self.skipTest("Impossible d'ajouter un message pour inspection.")
-        messages = self._get_messages(conv)
-        # Inspect the first message structure
-        first = messages[0]
-        # acceptable forms: dict with keys, or object with attributes
-        if isinstance(first, dict):
-            self.assertIn(
-                "content",
-                first.keys() | {"content"},
-                "Le message dict devrait contenir 'content'",
-            )
-        else:
-            # object: check attributes
-            has_content = (
-                hasattr(first, "content")
-                or hasattr(first, "text")
-                or hasattr(first, "message")
-            )
-            self.assertTrue(
-                has_content,
-                "L'objet message devrait exposer 'content'/'text'/'message'",
-            )
+    ]
+    assert any(diffs)
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_conversation_edge_cases():
+    # valeurs minimales / vides acceptées (si tu souhaites les interdire, remplace par raises)
+    conv_min = Conversation(
+        id_conversation=0,
+        titre="",
+        created_at=datetime.now(),
+        setting_conversation="",
+        token_viewer="",
+        token_writter="",
+        is_active=False,
+    )
+    assert conv_min.id_conversation == 0
+    assert conv_min.titre == ""
+    assert conv_min.setting_conversation == ""
+    assert conv_min.token_viewer == ""
+    assert conv_min.token_writter == ""
+    assert conv_min.is_active is False
+
+    # valeurs maximales "raisonnables"
+    max_int = 2**31 - 1
+    conv_max = Conversation(
+        id_conversation=max_int,
+        titre="A" * 1000,
+        created_at=datetime.now(),
+        setting_conversation="B" * 1000,
+        token_viewer="C" * 256,
+        token_writter="D" * 256,
+        is_active=True,
+    )
+    assert conv_max.id_conversation == max_int
+    assert conv_max.titre == "A" * 1000
+    assert conv_max.setting_conversation == "B" * 1000
+    assert conv_max.token_viewer == "C" * 256
+    assert conv_max.token_writter == "D" * 256
+    assert conv_max.is_active is True
+
+
+def test_conversation_special_characters_in_fields():
+    special_title = "Projet αβγ 😊🚀 #conv"
+    special_cfg = "lang=fr-FR;temp=0.1;notes=“éèà — test”"
+    conv = Conversation(
+        1,
+        special_title,
+        datetime.now(),
+        special_cfg,
+        "tv$-#@!",
+        "tw$-#@!",
+        True,
+    )
+    assert conv.titre == special_title
+    assert conv.setting_conversation == special_cfg
+    assert isinstance(conv.created_at, datetime)
+
+
+def test_conversation_whitespace_in_fields():
+    conv = Conversation(
+        1,
+        "   Mon Titre   ",
+        datetime.now(),
+        "   cfg   ",
+        "   tv   ",
+        "   tw   ",
+        False,
+    )
+    assert conv.titre == "   Mon Titre   "
+    assert conv.setting_conversation == "   cfg   "
+    assert conv.token_viewer == "   tv   "
+    assert conv.token_writter == "   tw   "
+
+
+def test_conversation_future_date():
+    future_date = datetime(3000, 1, 1)
+    conv = Conversation(1, "Futur", future_date, "cfg", "tv", "tw", True)
+    assert conv.created_at == future_date
+
+
+def test_conversation_past_date():
+    past_date = datetime(2000, 1, 1)
+    conv = Conversation(1, "Passé", past_date, "cfg", "tv", "tw", False)
+    assert conv.created_at == past_date
+
+
+def test_conversation_boolean_edge_cases():
+    conv_true = Conversation(1, "Titre", datetime.now(), "cfg", "tv", "tw", True)
+    conv_false = Conversation(2, "Titre2", datetime.now(), "cfg2", "tv2", "tw2", False)
+    assert conv_true.is_active is True
+    assert conv_false.is_active is False

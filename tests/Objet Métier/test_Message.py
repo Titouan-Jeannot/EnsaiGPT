@@ -1,156 +1,154 @@
-from pathlib import Path
-from importlib.machinery import SourceFileLoader
-from importlib.util import spec_from_loader, module_from_spec
-from datetime import datetime, timedelta
 import pytest
-
-# test_Message.py
-# Tests unitaires adaptatifs pour la classe Message
-# Placez ce fichier dans tests/Objet Métier/ comme demandé.
+from datetime import datetime
+from src.Objet_Metier.Message import Message
 
 
-def _find_and_load_message_class():
-    # Cherche un fichier message.py contenant "class Message" dans l'arborescence du projet
-    base = (
-        Path(__file__).resolve().parents[2]
-    )  # monte jusqu'à la racine présumée du projet
-    for path in base.rglob("message.py"):
-        try:
-            text = path.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        if "class Message" in text:
-            loader = SourceFileLoader(
-                f"tests_message_{path.stem}_{abs(hash(str(path)))}", str(path)
-            )
-            spec = spec_from_loader(loader.name, loader)
-            module = module_from_spec(spec)
-            loader.exec_module(module)
-            if hasattr(module, "Message"):
-                return getattr(module, "Message")
-    raise ImportError(
-        "Impossible de trouver une classe 'Message' dans un fichier message.py du projet."
+def test_message_initialization():
+    msg = Message(
+        id_message=1,
+        id_conversation=10,
+        id_user=100,
+        datetime=datetime.now(),
+        message="Bonjour",
+        is_from_agent=True,
     )
+    assert msg.id_message == 1
+    assert msg.id_conversation == 10
+    assert msg.id_user == 100
+    assert isinstance(msg.datetime, datetime)
+    assert msg.message == "Bonjour"
+    assert msg.is_from_agent is True
 
 
-Message = _find_and_load_message_class()
+def test_message_allows_none_id_message():
+    # id_message peut être None selon ta doc -> ne doit PAS lever
+    msg = Message(
+        id_message=None,
+        id_conversation=10,
+        id_user=100,
+        datetime=datetime.now(),
+        message="Sans id_message",
+        is_from_agent=False,
+    )
+    assert msg.id_message is None
+    assert msg.is_from_agent is False
 
 
-def create_sample(kwargs=None):
-    kwargs = kwargs or {}
-    defaults = {
-        "sender": "alice@example.com",
-        "recipient": "bob@example.com",
-        "content": "Bonjour Bob",
-    }
-    defaults.update(kwargs)
-    # Try to instantiate flexibly depending on constructor signature
-    try:
-        return Message(**defaults)
-    except TypeError:
-        try:
-            return Message(
-                defaults["sender"], defaults["recipient"], defaults["content"]
-            )
-        except Exception as e:
-            pytest.skip(
-                f"Impossible d'instancier Message avec les signatures connues: {e}"
-            )
-
-
-def has_method(obj, name):
-    return callable(getattr(obj, name, None))
-
-
-def has_attr(obj, name):
-    return hasattr(obj, name)
-
-
-def test_create_message_and_attributes():
-    m = create_sample()
-    assert m is not None
-    # Vérifie au moins la présence des attributs courants (sender, recipient, content)
-    for attr in ("sender", "recipient", "content"):
-        assert hasattr(m, attr), f"L'objet Message doit avoir l'attribut '{attr}'"
-
-
-def test_str_contains_key_fields():
-    m = create_sample()
-    s = str(m)
-    assert isinstance(s, str)
-    # Le str devrait contenir au moins l'expéditeur ou le contenu
-    assert (getattr(m, "sender", "") in s) or (getattr(m, "content", "") in s)
-
-
-def test_equality_behavior():
-    m1 = create_sample()
-    # crée une copie de façon "naïve" selon signature
-    try:
-        m2 = Message(m1.sender, m1.recipient, m1.content)
-    except Exception:
-        try:
-            m2 = Message(
-                **{
-                    k: getattr(m1, k)
-                    for k in ("sender", "recipient", "content")
-                    if hasattr(m1, k)
-                }
-            )
-        except Exception:
-            pytest.skip(
-                "Impossible de re-créer une instance équivalente pour tester l'égalité."
-            )
-    if has_method(m1, "__eq__"):
-        assert (m1 == m2) == True or (
-            m1 == m2
-        ) == False  # s'assure que l'opérateur ne lève pas d'erreur
-    else:
-        pytest.skip("La classe Message n'implémente pas __eq__ explicitement.")
-
-
-def test_serialization_roundtrip_if_available():
-    m = create_sample()
-    # Cherche une méthode to_dict / from_dict ou serialize / deserialize
-    if has_method(m, "to_dict") and hasattr(Message, "from_dict"):
-        data = m.to_dict()
-        m2 = Message.from_dict(data)
-        assert hasattr(m2, "content")
-        assert getattr(m, "content", None) == getattr(m2, "content", None)
-    elif has_method(m, "serialize") and has_method(Message, "deserialize"):
-        data = m.serialize()
-        m2 = Message.deserialize(data)
-        assert getattr(m, "content", None) == getattr(m2, "content", None)
-    else:
-        pytest.skip(
-            "Pas de méthode de sérialisation détectée (to_dict/from_dict ou serialize/deserialize)."
+def test_message_init_type_errors():
+    now = datetime.now()
+    with pytest.raises(ValueError):
+        Message(
+            id_message="notint",
+            id_conversation=10,
+            id_user=100,
+            datetime=now,
+            message="x",
+            is_from_agent=True,
+        )
+    with pytest.raises(ValueError):
+        Message(
+            id_message=1,
+            id_conversation="notint",
+            id_user=100,
+            datetime=now,
+            message="x",
+            is_from_agent=True,
+        )
+    with pytest.raises(ValueError):
+        Message(
+            id_message=1,
+            id_conversation=10,
+            id_user="notint",
+            datetime=now,
+            message="x",
+            is_from_agent=True,
+        )
+    with pytest.raises(ValueError):
+        Message(
+            id_message=1,
+            id_conversation=10,
+            id_user=100,
+            datetime="notdatetime",
+            message="x",
+            is_from_agent=True,
+        )
+    with pytest.raises(ValueError):
+        Message(
+            id_message=1,
+            id_conversation=10,
+            id_user=100,
+            datetime=now,
+            message=123,
+            is_from_agent=True,
+        )
+    with pytest.raises(ValueError):
+        Message(
+            id_message=1,
+            id_conversation=10,
+            id_user=100,
+            datetime=now,
+            message="x",
+            is_from_agent="notbool",
         )
 
 
-def test_mark_read_or_is_read_behavior():
-    m = create_sample()
-    # Si existe un attribut représentant "lu"
-    if has_attr(m, "is_read"):
-        before = getattr(m, "is_read")
-        # Essayons de marquer comme lu si la méthode existe
-        if has_method(m, "mark_read"):
-            m.mark_read()
-            assert getattr(m, "is_read") == True
-        else:
-            # Si pas de méthode, essaye de modifier l'attribut directement (comportement permissif)
-            setattr(m, "is_read", True)
-            assert getattr(m, "is_read") == True
-    elif has_method(m, "mark_read"):
-        # Si seule la méthode existe, on appelle et vérifie qu'elle ne lève pas d'erreur
-        m.mark_read()
-    else:
-        pytest.skip("Aucun mécanisme 'lu' détecté (is_read ou mark_read).")
+def test_message_equality():
+    now = datetime.now()
+    m1 = Message(1, 10, 100, now, "Hello", True)
+    m2 = Message(1, 10, 100, now, "Hello", True)
+    m3 = Message(2, 11, 101, now, "Different", False)
+
+    assert m1 == m2
+    assert m1 != m3
 
 
-def test_timestamp_behavior_if_present():
-    m = create_sample()
-    # Vérifie la présence d'un timestamp et qu'il ressemble à une date/heure
-    if hasattr(m, "timestamp"):
-        ts = getattr(m, "timestamp")
-        assert isinstance(ts, (int, float, datetime)) or hasattr(ts, "isoformat")
-    else:
-        pytest.skip("Pas d'attribut 'timestamp' sur Message.")
+def test_message_edge_cases():
+    # valeurs minimales
+    m_min = Message(0, 0, 0, datetime.now(), "", False)
+    assert m_min.id_message == 0
+    assert m_min.id_conversation == 0
+    assert m_min.id_user == 0
+    assert m_min.message == ""
+    assert m_min.is_from_agent is False
+
+    # valeurs maximales raisonnables
+    max_int = 2**31 - 1
+    m_max = Message(max_int, max_int, max_int, datetime.now(), "A" * 1000, True)
+    assert m_max.id_message == max_int
+    assert m_max.id_conversation == max_int
+    assert m_max.id_user == max_int
+    assert m_max.message == "A" * 1000
+    assert m_max.is_from_agent is True
+
+
+def test_message_special_characters_in_message():
+    msg_text = "Salut 😊🚀 #hashtag @mention"
+    m = Message(1, 10, 100, datetime.now(), msg_text, True)
+    assert m.message == msg_text
+
+
+def test_message_whitespace_in_message():
+    msg_text = "   Bonjour   "
+    m = Message(1, 10, 100, datetime.now(), msg_text, False)
+    assert m.message == msg_text
+
+
+def test_message_future_datetime():
+    future_date = datetime(3000, 1, 1)
+    m = Message(1, 10, 100, future_date, "Future", True)
+    assert m.datetime == future_date
+
+
+def test_message_past_datetime():
+    past_date = datetime(2000, 1, 1)
+    m = Message(1, 10, 100, past_date, "Past", False)
+    assert m.datetime == past_date
+
+
+def test_message_str_contains_key_fields():
+    now = datetime(2025, 1, 1, 12, 0, 0)
+    m = Message(1, 10, 100, now, "Bonjour Bob !", True)
+    s = str(m)
+    assert isinstance(s, str)
+    # On tolère différents formats, mais on veut au moins du contenu clé
+    assert "Bonjour Bob" in s or "100" in s or "Agent" in s or "User" in s
