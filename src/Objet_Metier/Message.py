@@ -71,3 +71,26 @@ class Message:
     def __str__(self):
         author = "Agent" if self.is_from_agent else "User"
         return f"[{self.datetime}] {author}({self.id_user}) : {self.message}"
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Message":
+        """Crée une instance de Message depuis un dictionnaire."""
+        return cls(
+            id_message=data.get("id_message"),
+            id_conversation=data["id_conversation"],
+            id_user=data["id_user"],
+            datetime=data["datetime"],
+            message=data["message"],
+            is_from_agent=data["is_from_agent"],
+        )
+
+    def to_dict(self) -> dict:
+        """Convertit le message en dictionnaire."""
+        return {
+            "id_message": self.id_message,
+            "id_conversation": self.id_conversation,
+            "id_user": self.id_user,
+            "datetime": self.datetime,
+            "message": self.message,
+            "is_from_agent": self.is_from_agent,
+        }
