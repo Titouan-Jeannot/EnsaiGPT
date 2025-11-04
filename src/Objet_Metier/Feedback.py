@@ -1,6 +1,7 @@
 from datetime import datetime
 
-class Feedback :
+
+class Feedback:
 
     def __init__(self, id_feedback, id_user, id_message, is_like, comment, create_at):
         """
