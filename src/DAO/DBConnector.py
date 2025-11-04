@@ -2,36 +2,31 @@
 import os
 from contextlib import contextmanager
 from psycopg2.pool import SimpleConnectionPool
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictConnection  # <<- clé : impose RealDictCursor par défaut
 from dotenv import load_dotenv
 
-# Charge .env (DATABASE_URL=postgresql://...neon.tech/...?... )
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL manquant. Ajoute-le dans .env (ex: DATABASE_URL=postgresql://...neon.tech/...)?sslmode=require"
-    )
+    raise RuntimeError("DATABASE_URL manquant dans .env")
 
-# Pool global partagé par toute l'appli
-# cursor_factory=RealDictCursor => cursor.fetchall() renvoie des dicts {col: val}
+# Pool global : chaque connexion est une RealDictConnection
 POOL = SimpleConnectionPool(
     minconn=1,
     maxconn=10,
     dsn=DATABASE_URL,
     connect_timeout=10,
-    cursor_factory=RealDictCursor,
+    connection_factory=RealDictConnection,  # <<- IMPORTANT
 )
-
 
 class DBConnection:
     """
     Fournit une connexion transactionnelle depuis le pool.
-    Usage :
-        with DBConnection().connection as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT ...")
+    Usage existant conservé :
+        with DBConnection().connection as connection:
+            with connection.cursor() as cursor:  # <-- renvoie un RealDictCursor automatiquement
+                cursor.execute("SELECT 1 AS ok;")
+                row = cursor.fetchone()  # {'ok': 1}
     """
     @property
     @contextmanager
@@ -47,9 +42,7 @@ class DBConnection:
         finally:
             POOL.putconn(conn)
 
-
 def close_pool():
-    """À appeler éventuellement à l'arrêt de l'appli (optionnel)."""
     try:
         POOL.closeall()
     except Exception:
