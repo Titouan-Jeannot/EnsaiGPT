@@ -1,10 +1,9 @@
 import logging
 from typing import List, Optional
-from src.Utils.log_decorator import log           # si ton fichier utils est à la racine du projet
-from src.DAO.DBConnector import DBConnection
-from src.ObjetMetier.Collaboration import Collaboration
-from src.Utils.Singleton import Singleton
-
+from Utils.log_decorator import log           # si ton fichier utils est à la racine du projet
+from DAO.DBConnector import DBConnection
+from ObjetMetier.Collaboration import Collaboration
+from Utils.Singleton import Singleton
 
 class CollaborationDAO(metaclass=Singleton):
     """

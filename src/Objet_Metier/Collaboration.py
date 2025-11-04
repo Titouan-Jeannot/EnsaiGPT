@@ -43,7 +43,6 @@ class Collaboration:
             raise ValueError("role doit être une chaîne non nulle")
         role = role.lower()  # Normalize role to lowercase
         if role not in ["admin", "viewer", "writer", "banned"]:
-        if role not in ["admin", "viewer", "writer", "banned"]:
             raise ValueError("role doit être 'admin', 'viewer', 'writer' ou 'banned'")
 
         # id_collaboration peut être None (auto-généré par la BDD lors de l'insertion)
