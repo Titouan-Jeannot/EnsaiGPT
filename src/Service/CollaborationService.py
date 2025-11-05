@@ -105,9 +105,17 @@ class CollaborationService(metaclass=Singleton):
     @log
     def verify_token_collaboration(self, conversation_id: int, token: str) -> bool:
         """
-        Vérifie si un token (viewer ou writer) correspond à une conversation.
+        Vérifie si un token (viewer ou writer) correspond à une conversation
+        et ajoute l'utilisateur dans la collaboration avec le role adequat
         """
         conv = self.conversation_dao.read(conversation_id)
         if not conv:
             return False
-        return token in [conv.token_viewer, conv.token_writter]
+        if token == conv.token_viewer :
+            # ajustement : Ajouter l'utilisateur comme viewer
+            pass
+        elif token == conv.token_writter :
+            # ajustement : ajouter l'utilisateur comme writter
+            pass
+        else:
+            return False
