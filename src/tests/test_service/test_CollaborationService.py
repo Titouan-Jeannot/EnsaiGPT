@@ -303,3 +303,56 @@ def test_verify_token_collaboration_match(service_setup):
     assert service.verify_token_collaboration(10, "viewer") is True
     assert service.verify_token_collaboration(10, "writer") is True
     assert service.verify_token_collaboration(10, "other") is False
+
+
+
+# --- Tests pour add_collab_by_token -----------------------------------------
+
+def test_add_collab_by_token_missing_conversation(service_setup):
+    service, collab_dao, _, conversation_dao = service_setup
+    # plus aucune conversation connue
+    conversation_dao.set_conversations({})
+
+    ok = service.add_collab_by_token(conversation_id=99, token="viewer", user_id=1)
+    assert ok is False
+    # rien n'a été créé
+    assert collab_dao.find_by_conversation_and_user(99, 1) is None
+
+
+def test_add_collab_by_token_viewer(service_setup):
+    service, collab_dao, _, _ = service_setup
+    # conversation 10 existe avec token_viewer="viewer" (défini dans la fixture)
+    ok = service.add_collab_by_token(conversation_id=10, token="viewer", user_id=1)
+    assert ok is True
+
+    created = collab_dao.find_by_conversation_and_user(10, 1)
+    assert created is not None
+    assert created.role.lower() == "viewer"
+
+
+def test_add_collab_by_token_writer(service_setup):
+    service, collab_dao, _, _ = service_setup
+    # conversation 10 existe avec token_writter="writer"
+    ok = service.add_collab_by_token(conversation_id=10, token="writer", user_id=2)
+    assert ok is True
+
+    created = collab_dao.find_by_conversation_and_user(10, 2)
+    assert created is not None
+    assert created.role.lower() == "writer"
+
+
+def test_add_collab_by_token_invalid_token(service_setup):
+    service, collab_dao, _, _ = service_setup
+    ok = service.add_collab_by_token(conversation_id=10, token="badtoken", user_id=3)
+    assert ok is False
+    assert collab_dao.find_by_conversation_and_user(10, 3) is None
+
+
+def test_add_collab_by_token_user_not_found(service_setup):
+    service, collab_dao, user_dao, _ = service_setup
+    # fait en sorte que le user n'existe pas → create_collab renverra False
+    user_dao.set_existing(set())
+
+    ok = service.add_collab_by_token(conversation_id=10, token="viewer", user_id=999)
+    assert ok is False
+    assert collab_dao.find_by_conversation_and_user(10, 999) is None
