@@ -1,16 +1,11 @@
 from unittest.mock import MagicMock, patch
-<<<<<<< HEAD:tests/test_dao/test_CollaborationDAO.py
-from DAO.CollaborationDAO import CollaborationDAO
-from Objet_Metier.Collaboration import Collaboration
-=======
+
 from src.DAO.CollaborationDAO import CollaborationDAO
 from src.ObjetMetier.Collaboration import Collaboration
 
->>>>>>> 4a539ddaa2b9966d5d5a471305e4498bcb32683a:tests/DAO/test_CollaborationDAO.py
 
 class TestCollaborationDAO:
-
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_create_success(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -24,10 +19,7 @@ class TestCollaborationDAO:
 
         dao = CollaborationDAO()
         collaboration = Collaboration(
-            id_collaboration=0,
-            id_conversation=10,
-            id_user=100,
-            role="ADMIN"
+            id_collaboration=0, id_conversation=10, id_user=100, role="ADMIN"
         )
 
         # Act
@@ -38,7 +30,7 @@ class TestCollaborationDAO:
         assert collaboration.id_collaboration == 1
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_create_exception(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -59,9 +51,7 @@ class TestCollaborationDAO:
         # Assert
         assert result is False
 
-
-
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_delete_success(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -82,7 +72,7 @@ class TestCollaborationDAO:
         assert result is True
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_update_success(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -104,7 +94,7 @@ class TestCollaborationDAO:
         assert result is True
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_update_role_success(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -125,13 +115,13 @@ class TestCollaborationDAO:
         assert result is True
         mock_cursor.execute.assert_called_once()
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_find_by_conversation(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
         mock_cursor.fetchall.return_value = [
             {"id_collaboration": 1, "id_conversation": 10, "id_user": 100, "role": "ADMIN"},
-            {"id_collaboration": 2, "id_conversation": 10, "id_user": 101, "role": "WRITER"}
+            {"id_collaboration": 2, "id_conversation": 10, "id_user": 101, "role": "WRITER"},
         ]
 
         mock_connection = MagicMock()
@@ -150,7 +140,7 @@ class TestCollaborationDAO:
         assert collaborations[0].id_conversation == 10
         assert collaborations[1].id_conversation == 10
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_find_by_conversation_and_user(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -158,7 +148,7 @@ class TestCollaborationDAO:
             "id_collaboration": 1,
             "id_conversation": 10,
             "id_user": 100,
-            "role": "ADMIN"
+            "role": "ADMIN",
         }
 
         mock_connection = MagicMock()
@@ -177,13 +167,13 @@ class TestCollaborationDAO:
         assert collaboration.id_conversation == 10
         assert collaboration.id_user == 100
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_list_all(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
         mock_cursor.fetchall.return_value = [
             {"id_collaboration": 1, "id_conversation": 10, "id_user": 100, "role": "ADMIN"},
-            {"id_collaboration": 2, "id_conversation": 11, "id_user": 101, "role": "WRITER"}
+            {"id_collaboration": 2, "id_conversation": 11, "id_user": 101, "role": "WRITER"},
         ]
 
         mock_connection = MagicMock()
@@ -200,7 +190,7 @@ class TestCollaborationDAO:
         # Assert
         assert len(collaborations) == 2
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_count_by_conversation(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
@@ -220,7 +210,7 @@ class TestCollaborationDAO:
         # Assert
         assert count == 3
 
-    @patch('src.DAO.CollaborationDAO.DBConnection')
+    @patch("src.DAO.CollaborationDAO.DBConnection")
     def test_delete_by_conversation_and_user(self, mock_db_connection):
         # Arrange
         mock_cursor = MagicMock()
