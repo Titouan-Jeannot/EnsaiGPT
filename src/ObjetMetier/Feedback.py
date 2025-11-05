@@ -3,7 +3,7 @@ from datetime import datetime
 
 class Feedback:
 
-    def __init__(self, id_feedback, id_user, id_message, is_like, comment, create_at):
+    def __init__(self, id_feedback, id_user, id_message, is_like, comment, created_at):
         """
         Constructeur de la classe Feedback.
 
@@ -30,15 +30,15 @@ class Feedback:
             raise ValueError("is_like must be a non-null boolean")
         if comment is not None and not isinstance(comment, str):
             raise ValueError("comment must be a string or None")
-        if create_at is None or not isinstance(create_at, datetime):
-            raise ValueError("create_at must be a non-null datetime")
+        if created_at is None or not isinstance(created_at, datetime):
+            raise ValueError("created_at must be a non-null datetime")
 
         self.id_feedback = id_feedback
         self.id_user = id_user
         self.id_message = id_message
         self.is_like = is_like
         self.comment = comment
-        self.create_at = create_at
+        self.created_at = created_at
 
     def __eq__(self, other):
         if not isinstance(other, Feedback):
@@ -48,4 +48,4 @@ class Feedback:
                 self.id_message == other.id_message and
                 self.is_like == other.is_like and
                 self.comment == other.comment and
-                self.create_at == other.create_at)
+                self.created_at == other.created_at)
