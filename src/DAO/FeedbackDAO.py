@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from psycopg2.extras import RealDictCursor
 
@@ -10,6 +10,21 @@ from src.ObjetMetier.Feedback import Feedback
 
 class FeedbackDAO:
     """DAO minimal pour Feedback — CRUD complet."""
+
+    # --- HELPERS ------------------------------------------------------------
+
+    def _row_to_feedback(self, row: Optional[dict]) -> Optional[Feedback]:
+        """Transforme un dict SQL en objet Feedback."""
+        if not row:
+            return None
+        return Feedback(
+            id_feedback=row["id_feedback"],
+            id_user=row["id_user"],
+            id_message=row["id_message"],
+            is_like=row["is_like"],
+            comment=row["comment"],
+            created_at=row["created_at"],
+        )
 
     # --- CREATE -------------------------------------------------------------
 
@@ -39,16 +54,10 @@ class FeedbackDAO:
                     )
                     row = cur.fetchone()
                     # le context manager commit automatiquement si pas d'exception
-            if not row:
+            created = self._row_to_feedback(row)
+            if not created:
                 raise RuntimeError("Insertion feedback: RETURNING vide.")
-            return Feedback(
-                id_feedback=row["id_feedback"],
-                id_user=row["id_user"],
-                id_message=row["id_message"],
-                is_like=row["is_like"],
-                comment=row["comment"],
-                created_at=row["created_at"],
-            )
+            return created
         except Exception as e:
             logging.error(f"Erreur lors de la création du feedback : {e}")
             raise
@@ -67,16 +76,7 @@ class FeedbackDAO:
                 with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     cur.execute(query, {"id_feedback": id_feedback})
                     row = cur.fetchone()
-            if not row:
-                return None
-            return Feedback(
-                id_feedback=row["id_feedback"],
-                id_user=row["id_user"],
-                id_message=row["id_message"],
-                is_like=row["is_like"],
-                comment=row["comment"],
-                created_at=row["created_at"],
-            )
+            return self._row_to_feedback(row)
         except Exception as e:
             logging.error(f"Erreur lecture feedback {id_feedback} : {e}")
             raise
@@ -128,4 +128,62 @@ class FeedbackDAO:
                     return cur.rowcount > 0
         except Exception as e:
             logging.error(f"Erreur lors de la suppression du feedback {id_feedback} : {e}")
+            raise
+
+    # --- CUSTOM QUERIES -----------------------------------------------------
+
+    def list_by_message(self, message_id: int) -> List[Feedback]:
+        """Retourne l'ensemble des feedbacks liés à un message."""
+        query = """
+            SELECT id_feedback, id_user, id_message, is_like, comment, created_at
+              FROM feedback
+             WHERE id_message = %(id_message)s
+             ORDER BY created_at DESC;
+        """
+        try:
+            with DBConnection().connection as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(query, {"id_message": message_id})
+                    rows = cur.fetchall() or []
+            return [fb for row in rows if (fb := self._row_to_feedback(row))]
+        except Exception as e:
+            logging.error(f"Erreur lors du listing des feedbacks du message {message_id} : {e}")
+            raise
+
+    def list_by_user(self, user_id: int) -> List[Feedback]:
+        """Retourne l'ensemble des feedbacks créés par un utilisateur."""
+        query = """
+            SELECT id_feedback, id_user, id_message, is_like, comment, created_at
+              FROM feedback
+             WHERE id_user = %(id_user)s
+             ORDER BY created_at DESC;
+        """
+        try:
+            with DBConnection().connection as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(query, {"id_user": user_id})
+                    rows = cur.fetchall() or []
+            return [fb for row in rows if (fb := self._row_to_feedback(row))]
+        except Exception as e:
+            logging.error(f"Erreur lors du listing des feedbacks de l'utilisateur {user_id} : {e}")
+            raise
+
+    def count_by_message(self, message_id: int, is_like: bool) -> int:
+        """Compte le nombre de feedbacks (like/dislike) pour un message."""
+        query = """
+            SELECT COUNT(*) AS count
+              FROM feedback
+             WHERE id_message = %(id_message)s
+               AND is_like = %(is_like)s;
+        """
+        try:
+            with DBConnection().connection as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(query, {"id_message": message_id, "is_like": is_like})
+                    row = cur.fetchone()
+            return int(row["count"]) if row and row.get("count") is not None else 0
+        except Exception as e:
+            logging.error(
+                f"Erreur lors du comptage des feedbacks (is_like={is_like}) du message {message_id} : {e}"
+            )
             raise
