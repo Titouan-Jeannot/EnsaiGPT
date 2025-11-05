@@ -38,8 +38,8 @@ class Conversation:
         """
 
         # Vérifications de type
-        if not isinstance(id_conversation, int):
-            raise ValueError("id_conversation must be an integer")
+        if id_conversation is not None and not isinstance(id_conversation, int):
+            raise ValueError("id_conversation must be an integer or None")
         if not isinstance(titre, str):
             raise ValueError("titre must be a string")
         if not isinstance(created_at, datetime):

@@ -1,17 +1,25 @@
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 import secrets
 
-try:
-    from Objet_Metier.Conversation import Conversation
-    from DAO.Conversation_DAO import ConversationDAO
+try:  # pragma: no cover
+    from ObjetMetier.Conversation import Conversation
+    from DAO.ConversationDAO import ConversationDAO
     from Service.UserService import UserService
     from Service.MessageService import MessageService
-except ImportError:
-    from src.Objet_Metier.Conversation import Conversation
-    from src.DAO.Conversation_DAO import ConversationDAO
-    from src.Service.UserService import UserService
-    from src.Service.MessageService import MessageService
+except ImportError:  # pragma: no cover
+    from src.ObjetMetier.Conversation import Conversation  # pragma: no cover
+    from src.DAO.ConversationDAO import ConversationDAO  # pragma: no cover
+    from src.Service.UserService import UserService  # pragma: no cover
+    from src.Service.MessageService import MessageService  # pragma: no cover
+
+if TYPE_CHECKING:  # pragma: no cover
+    try:  # pragma: no cover
+        from Service.CollaborationService import CollaborationService  # pragma: no cover
+    except ImportError:  # pragma: no cover
+        from src.Service.CollaborationService import CollaborationService  # pragma: no cover
 
 
 class ConversationService:
@@ -30,7 +38,7 @@ class ConversationService:
         self.message_service = message_service
 
     def create_conversation(
-        self, title: str, user_id: int, setting_conversation: str = ""
+        self, title: str, user_id: int, setting_conversation: str = "Tu es un assistant utile."
     ) -> Conversation:
         """Crée une nouvelle conversation et ajoute le créateur comme admin."""
         # Vérifier que l'utilisateur existe
