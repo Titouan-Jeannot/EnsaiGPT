@@ -3,7 +3,7 @@ from typing import List, Optional
 from src.DAO.CollaborationDAO import CollaborationDAO
 from src.DAO.User_DAO import UserDAO
 from src.DAO.ConversationDAO import ConversationDAO
-from src.Objet_Metier.Collaboration import Collaboration
+from src.ObjetMetier.Collaboration import Collaboration
 from src.Utils.Singleton import Singleton
 from src.Utils.log_decorator import log
 
