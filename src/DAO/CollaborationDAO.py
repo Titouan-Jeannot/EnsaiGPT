@@ -35,7 +35,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        INSERT INTO collaborations (id_conversation, id_user, role)
+                        INSERT INTO collaboration (id_conversation, id_user, role)
                         VALUES (%(id_conversation)s, %(id_user)s, %(role)s)
                         RETURNING id_collaboration;
                         """,
@@ -75,7 +75,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT * FROM collaborations
+                        SELECT * FROM collaboration
                         WHERE id_collaboration = %(id_collaboration)s;
                         """,
                         {"id_collaboration": id_collaboration},
@@ -114,7 +114,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        UPDATE collaborations
+                        UPDATE collaboration
                            SET id_conversation = %(id_conversation)s,
                                id_user = %(id_user)s,
                                role = %(role)s
@@ -152,7 +152,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        DELETE FROM collaborations
+                        DELETE FROM collaboration
                          WHERE id_collaboration = %(id_collaboration)s;
                         """,
                         {"id_collaboration": id_collaboration},
@@ -180,7 +180,7 @@ class CollaborationDAO(metaclass=Singleton):
         try:
             with DBConnection().connection as connection:
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT * FROM collaborations ORDER BY id_conversation, id_user;")
+                    cursor.execute("SELECT * FROM collaboration ORDER BY id_conversation, id_user;")
                     res = cursor.fetchall()
 
             for row in res or []:
@@ -207,7 +207,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT * FROM collaborations
+                        SELECT * FROM collaboration
                          WHERE id_conversation = %(id_conversation)s
                          ORDER BY id_user;
                         """,
@@ -239,7 +239,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT * FROM collaborations
+                        SELECT * FROM collaboration
                          WHERE id_user = %(id_user)s
                          ORDER BY id_conversation;
                         """,
@@ -270,7 +270,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT * FROM collaborations
+                        SELECT * FROM collaboration
                          WHERE id_conversation = %(id_conversation)s
                            AND id_user = %(id_user)s;
                         """,
@@ -295,27 +295,29 @@ class CollaborationDAO(metaclass=Singleton):
 
     @log
     def update_role(self, id_collaboration: int, new_role: str) -> bool:
-        """Modifie uniquement le rôle d’une collaboration."""
+        """Modifie uniquement le rôle d’une collaboration (enum minuscule)."""
         try:
-            new_role = new_role.strip().upper()
-            if new_role not in {"ADMIN", "WRITER", "VIEWER", "BANNED"}:
-                raise ValueError("Rôle invalide")
+            new_role_db = new_role.strip().lower()
+            valid = {"admin", "writer", "viewer", "banni"}
+            if new_role_db not in valid:
+                raise ValueError(f"Rôle invalide: {new_role!r}. Attendu: {sorted(valid)}")
 
             with DBConnection().connection as connection:
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        UPDATE collaborations
+                        UPDATE collaboration
                            SET role = %(role)s
                          WHERE id_collaboration = %(id_collaboration)s;
                         """,
-                        {"role": new_role, "id_collaboration": id_collaboration},
+                        {"role": new_role_db, "id_collaboration": id_collaboration},
                     )
                     return cursor.rowcount == 1
 
         except Exception as e:
             logging.error(f"Erreur lors de la modification du rôle de la collaboration {id_collaboration} : {e}")
             return False
+
 
     @log
     def delete_by_conversation_and_user(self, id_conversation: int, id_user: int) -> bool:
@@ -325,7 +327,7 @@ class CollaborationDAO(metaclass=Singleton):
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        DELETE FROM collaborations
+                        DELETE FROM collaboration
                          WHERE id_conversation = %(id_conversation)s
                            AND id_user = %(id_user)s;
                         """,
@@ -348,7 +350,7 @@ class CollaborationDAO(metaclass=Singleton):
                     cursor.execute(
                         """
                         SELECT COUNT(*) AS total
-                          FROM collaborations
+                          FROM collaboration
                          WHERE id_conversation = %(id_conversation)s;
                         """,
                         {"id_conversation": id_conversation},
