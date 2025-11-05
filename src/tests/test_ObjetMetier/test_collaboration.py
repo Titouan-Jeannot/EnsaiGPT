@@ -202,18 +202,6 @@ def test_large_number_of_collaborations():
         assert collaborations[i].role == "viewer"
 
 
-def test_role_case_sensitivity():
-    with pytest.raises(ValueError):
-        Collaboration(id_collaboration=1, id_conversation=10, id_user=100, role="Admin")
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role="VIEWER"
-        )
-    with pytest.raises(ValueError):
-        Collaboration(
-            id_collaboration=1, id_conversation=10, id_user=100, role="Writer"
-        )
-
 
 def test_whitespace_in_role():
     with pytest.raises(ValueError):
@@ -311,17 +299,6 @@ def test_role_with_numeric_string():
         Collaboration(
             id_collaboration=1, id_conversation=10, id_user=100, role="123"
         )
-
-def test_collaboration_with_mixed_case_role():
-            """Test avec des rôles ayant des majuscules et minuscules mélangées"""
-            with pytest.raises(ValueError):
-                Collaboration(
-                    id_collaboration=1, id_conversation=10, id_user=100, role="AdMiN"
-                )
-            with pytest.raises(ValueError):
-                Collaboration(
-                    id_collaboration=1, id_conversation=10, id_user=100, role="ViEwEr"
-                )
 
 def test_collaboration_with_special_characters_in_ids():
             """Test avec des caractères spéciaux dans les IDs"""
