@@ -1,12 +1,14 @@
 import logging
-from psycopg2.errors import IntegrityError, DatabaseError
+
+from psycopg2.errors import DatabaseError, IntegrityError
 from psycopg2.extras import RealDictCursor
+
 from src.DAO.DBConnector import DBConnection
 
 try:
-    from src.Objet_Metier.User import User
+    from src.ObjetMetier.User import User
 except Exception:
-    from Objet_Metier.User import User
+    from ObjetMetier.User import User
 
 
 class UserDAO:
@@ -24,18 +26,21 @@ class UserDAO:
         try:
             with DBConnection().connection as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, {
-                        "username": user.username,
-                        "nom": user.nom,
-                        "prenom": user.prenom,
-                        "mail": user.mail,
-                        "password_hash": user.password_hash,
-                        "salt": user.salt,
-                        "sign_in_date": user.sign_in_date,
-                        "last_login": user.last_login,
-                        "status": user.status,
-                        "setting_param": user.setting_param,
-                    })
+                    cur.execute(
+                        query,
+                        {
+                            "username": user.username,
+                            "nom": user.nom,
+                            "prenom": user.prenom,
+                            "mail": user.mail,
+                            "password_hash": user.password_hash,
+                            "salt": user.salt,
+                            "sign_in_date": user.sign_in_date,
+                            "last_login": user.last_login,
+                            "status": user.status,
+                            "setting_param": user.setting_param,
+                        },
+                    )
                     row = cur.fetchone()
                     user.id = row["id_user"] if row else None
             return user
@@ -89,19 +94,22 @@ class UserDAO:
         try:
             with DBConnection().connection as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, {
-                        "username": user.username,
-                        "nom": user.nom,
-                        "prenom": user.prenom,
-                        "mail": user.mail,
-                        "password_hash": user.password_hash,
-                        "salt": user.salt,
-                        "sign_in_date": user.sign_in_date,
-                        "last_login": user.last_login,
-                        "status": user.status,
-                        "setting_param": user.setting_param,
-                        "id": user.id,
-                    })
+                    cur.execute(
+                        query,
+                        {
+                            "username": user.username,
+                            "nom": user.nom,
+                            "prenom": user.prenom,
+                            "mail": user.mail,
+                            "password_hash": user.password_hash,
+                            "salt": user.salt,
+                            "sign_in_date": user.sign_in_date,
+                            "last_login": user.last_login,
+                            "status": user.status,
+                            "setting_param": user.setting_param,
+                            "id": user.id,
+                        },
+                    )
                     return cur.rowcount == 1
         except IntegrityError as e:
             logging.error(f"Contrainte violation update : {e}")
