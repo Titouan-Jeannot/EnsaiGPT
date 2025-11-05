@@ -1,5 +1,5 @@
 import pytest
-from Objet_Metier.Collaboration import Collaboration
+from ObjetMetier.Collaboration import Collaboration
 
 
 def test_collaboration_initialization():
