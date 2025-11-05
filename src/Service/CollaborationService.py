@@ -109,13 +109,26 @@ class CollaborationService(metaclass=Singleton):
         et ajoute l'utilisateur dans la collaboration avec le role adequat
         """
         conv = self.conversation_dao.read(conversation_id)
-        if not conv:
-            return False
         if token == conv.token_viewer :
             # ajustement : Ajouter l'utilisateur comme viewer
-            pass
+            self.collaboration_service.add_collaboration(
+                Collaboration(
+                    id_conversation=conversation_id,
+                    id_user=user_id,
+                    role="viewer"
+                )
+            )
+
         elif token == conv.token_writter :
             # ajustement : ajouter l'utilisateur comme writter
-            pass
+            self.collaboration_service.add_collaboration(
+                Collaboration(
+                    id_conversation=conversation_id,
+                    id_user=user_id,
+                    role="writer"
+                )
+            )
+
+
         else:
-            return False
+            raise ValueError("ID ou Token invalide.")
