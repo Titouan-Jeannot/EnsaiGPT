@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime
-from src.Objet_Metier.Message import Message
+from src.ObjetMetier.Message import Message
 
 
 def test_message_initialization():
