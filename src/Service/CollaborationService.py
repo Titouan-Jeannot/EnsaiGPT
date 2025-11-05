@@ -122,3 +122,26 @@ class CollaborationService(metaclass=Singleton):
             return True
 
         return False
+
+    def add_collab_by_token(
+        self, conversation_id: int, token: str, user_id: int
+    ) -> bool:
+        """
+        Ajoute une collaboration à un utilisateur en fonction du token fourni.
+
+        Comportement attendu par les tests :
+        - False si la conversation n'existe pas
+        - Ajoute en tant que viewer si le token correspond à token_viewer
+        - Ajoute en tant que writer si le token correspond à token_writter
+        - False sinon
+        """
+        conv = self.conversation_dao.read(conversation_id)
+        if conv is None:
+            return False
+
+        if token == getattr(conv, "token_viewer", None):
+            return self.create_collab(user_id, conversation_id, "viewer")
+        if token == getattr(conv, "token_writter", None):
+            return self.create_collab(user_id, conversation_id, "writer")
+
+        return False
