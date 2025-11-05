@@ -8,10 +8,10 @@ from typing import Optional
 
 try:
     from ObjetMetier.User import User
-    from DAO.User_DAO import UserDAO
+    from DAO.UserDAO import UserDAO
 except Exception:
     from src.ObjetMetier.User import User
-    from src.DAO.User_DAO import UserDAO
+    from src.DAO.UserDAO import UserDAO
 
 
 class AuthService:

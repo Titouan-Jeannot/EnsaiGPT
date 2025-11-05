@@ -16,16 +16,16 @@ except Exception:
 # ⚠️ Ne PAS importer les DAO/Services au runtime (évite dotenv/psycopg2 pendant les tests)
 if TYPE_CHECKING:
     try:
-        from DAO.Message_DAO import MessageDAO
-        from DAO.Conversation_DAO import ConversationDAO
-        from DAO.Collaboration_DAO import CollaborationDAO
-        from DAO.User_DAO import UserDAO
+        from DAO.MessageDAO import MessageDAO
+        from DAO.ConversationDAO import ConversationDAO
+        from DAO.CollaborationDAO import CollaborationDAO
+        from DAO.UserDAO import UserDAO
         from Service.UserService import UserService
     except Exception:  # type: ignore
-        from src.DAO.Message_DAO import MessageDAO  # type: ignore
-        from src.DAO.Conversation_DAO import ConversationDAO  # type: ignore
-        from src.DAO.Collaboration_DAO import CollaborationDAO  # type: ignore
-        from src.DAO.User_DAO import UserDAO  # type: ignore
+        from src.DAO.MessageDAO import MessageDAO  # type: ignore
+        from src.DAO.ConversationDAO import ConversationDAO  # type: ignore
+        from src.DAO.CollaborationDAO import CollaborationDAO  # type: ignore
+        from src.DAO.UserDAO import UserDAO  # type: ignore
         from src.Service.UserService import UserService  # type: ignore
 else:
     from typing import Any as MessageDAO  # type: ignore

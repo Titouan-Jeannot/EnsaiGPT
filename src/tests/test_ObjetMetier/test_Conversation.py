@@ -1,6 +1,5 @@
-# tests/Objet Métier/test_Conversation.py
+# tests/Objet Metier/test_Conversation.py
 from datetime import datetime
-
 import pytest
 
 from src.ObjetMetier.Conversation import Conversation
@@ -27,7 +26,7 @@ def test_conversation_initialization():
 
 def test_conversation_init_type_errors():
     now = datetime.now()
-    # id_conversation doit être int
+    # id_conversation doit être int ou None
     with pytest.raises(ValueError):
         Conversation("notint", "Titre", now, "cfg", "tv", "tw", True)
     # titre doit être str
@@ -39,15 +38,32 @@ def test_conversation_init_type_errors():
     # setting_conversation doit être str
     with pytest.raises(ValueError):
         Conversation(1, "Titre", now, 42, "tv", "tw", True)
-    # token_viewer doit être str
+    # token_viewer: type invalide (ni str ni None)
     with pytest.raises(ValueError):
         Conversation(1, "Titre", now, "cfg", 999, "tw", True)
-    # token_writter doit être str
+    # token_writter: type invalide (ni str ni None)
     with pytest.raises(ValueError):
-        Conversation(1, "Titre", now, "cfg", "tv", None, True)
+        Conversation(1, "Titre", now, "cfg", "tv", 3.14, True)
     # is_active doit être bool
     with pytest.raises(ValueError):
         Conversation(1, "Titre", now, "cfg", "tv", "tw", "notbool")
+
+
+def test_conversation_accepts_none_tokens_and_id_none():
+    now = datetime.now()
+    conv = Conversation(
+        id_conversation=None,
+        titre="OK",
+        created_at=now,
+        setting_conversation="{}",
+        token_viewer=None,   # accepté: sera généré en DAO
+        token_writter=None,  # accepté: sera généré en DAO
+        is_active=True,
+    )
+    assert conv.id_conversation is None
+    assert conv.token_viewer is None
+    assert conv.token_writter is None
+    assert conv.is_active is True
 
 
 def test_conversation_equality_like():

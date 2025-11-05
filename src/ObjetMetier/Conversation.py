@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 
 class Conversation:
@@ -7,7 +8,7 @@ class Conversation:
 
     Attributs
     ----------
-    id_conversation : int
+    id_conversation : int | None
         Identifiant unique de la conversation.
     titre : str
         Titre de la conversation.
@@ -15,26 +16,27 @@ class Conversation:
         Date et heure de création de la conversation.
     setting_conversation : str
         Paramètres ou contexte lié à la conversation.
-    token_viewer : str
-        Jeton permettant d’accéder à la conversation en lecture seule.
-    token_writter : str
-        Jeton permettant d’écrire dans la conversation.
+    token_viewer : str | None
+        Jeton (lecture seule). Peut être None à la création : généré en DAO.
+    token_writter : str | None
+        Jeton (écriture). Peut être None à la création : généré en DAO.
     is_active : bool
-        Indique si la conversation est encore active (True) ou archivée (False).
+        Conversation active (True) ou archivée (False).
     """
 
     def __init__(
         self,
-        id_conversation: int,
+        id_conversation: Optional[int],
         titre: str,
         created_at: datetime,
         setting_conversation: str,
-        token_viewer: str,
-        token_writter: str,
+        token_viewer: Optional[str],
+        token_writter: Optional[str],
         is_active: bool,
     ):
         """
-        Initialise une nouvelle instance de Conversation avec vérifications de type.
+        Initialise une instance de Conversation avec vérifications de type.
+        Les tokens peuvent être None (ils seront complétés dans le DAO).
         """
 
         # Vérifications de type
@@ -46,10 +48,11 @@ class Conversation:
             raise ValueError("created_at must be a datetime object")
         if not isinstance(setting_conversation, str):
             raise ValueError("setting_conversation must be a string")
-        if not isinstance(token_viewer, str):
-            raise ValueError("token_viewer must be a string")
-        if not isinstance(token_writter, str):
-            raise ValueError("token_writter must be a string")
+        # ⬇️ Assouplissement : autoriser None ou str pour les tokens
+        if token_viewer is not None and not isinstance(token_viewer, str):
+            raise ValueError("token_viewer must be a string or None")
+        if token_writter is not None and not isinstance(token_writter, str):
+            raise ValueError("token_writter must be a string or None")
         if not isinstance(is_active, bool):
             raise ValueError("is_active must be a boolean")
 

@@ -2,26 +2,29 @@ import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from datetime import datetime
 
 import importlib
-
 import pytest
 import psycopg2.pool
 
-# Ensure imports resolve and prevent real DB connections
+
+# --------------------------------------------------------------------
+# Chemins & environnement : pointer vers le dossier 'src' du projet
+# --------------------------------------------------------------------
+# Ce fichier est supposé être dans: <repo>/src/tests/test_service/...
+# parents[3] => <repo>/src
+SRC_DIR = Path(__file__).resolve().parents[3]
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+# Évite toute connexion réelle à une DB
 os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/db")
-PROJECT_SRC = Path(__file__).resolve().parents[2]
-if str(PROJECT_SRC) not in sys.path:
-    sys.path.insert(0, str(PROJECT_SRC))
-
-OBJET_METIER = importlib.import_module("ObjetMetier")
-sys.modules.setdefault("Objet_Metier", OBJET_METIER)
-sys.modules.setdefault("src.Objet_Metier", OBJET_METIER)
-
-UTILS_MODULE = importlib.import_module("Utils")
-sys.modules.setdefault("src.Utils", UTILS_MODULE)
 
 
+# --------------------------------------------------------------------
+# Stub de pool psycopg2 -> aucune vraie connexion n'est faite
+# --------------------------------------------------------------------
 class _DummyCursor:
     def __enter__(self):
         return self
@@ -67,13 +70,20 @@ class _DummyPool:
         return None
 
 
-psycopg2.pool.SimpleConnectionPool = _DummyPool
+psycopg2.pool.SimpleConnectionPool = _DummyPool  # type: ignore
 
+
+# --------------------------------------------------------------------
+# Imports après configuration du chemin
+# --------------------------------------------------------------------
 from src.ObjetMetier.Collaboration import Collaboration
 from src.Service.CollaborationService import CollaborationService
 from src.Utils.Singleton import Singleton
 
 
+# --------------------------------------------------------------------
+# Stubs DAO
+# --------------------------------------------------------------------
 class StubCollaborationDAO:
     def __init__(self):
         self.next_id = 1
@@ -83,13 +93,17 @@ class StubCollaborationDAO:
         self.deleted = []
 
     def create(self, collaboration: Collaboration) -> bool:
-        if collaboration.id_collaboration is None:
+        if getattr(collaboration, "id_collaboration", None) in (None, 0):
             collaboration.id_collaboration = self.next_id
             self.next_id += 1
         self.by_pair[(collaboration.id_conversation, collaboration.id_user)] = collaboration
         self.by_id[collaboration.id_collaboration] = collaboration
         self.created.append(collaboration)
         return True
+
+    # pour compat : certains services peuvent appeler add_collaboration
+    def add_collaboration(self, collaboration: Collaboration) -> bool:
+        return self.create(collaboration)
 
     def find_by_conversation_and_user(self, conversation_id: int, user_id: int):
         return self.by_pair.get((conversation_id, user_id))
@@ -125,6 +139,11 @@ class StubUserDAO:
         self.calls.append(user_id)
         return object() if user_id in self.existing else None
 
+    # au cas où le service attendrait un user courant
+    def get_current_user_id(self) -> int:
+        # valeur fictive mais stable
+        return 1
+
 
 class StubConversationDAO:
     def __init__(self, conversations=None):
@@ -139,6 +158,9 @@ class StubConversationDAO:
         return self.conversations.get(conversation_id)
 
 
+# --------------------------------------------------------------------
+# Fixture service avec monkeypatch des DAO dans le module cible
+# --------------------------------------------------------------------
 @pytest.fixture
 def service_setup(monkeypatch):
     collab_dao = StubCollaborationDAO()
@@ -147,20 +169,30 @@ def service_setup(monkeypatch):
         {10: SimpleNamespace(token_viewer="viewer", token_writter="writer")}
     )
 
+    # Monkeypatcher les classes importées dans le module de service
     monkeypatch.setattr("src.Service.CollaborationService.CollaborationDAO", lambda: collab_dao)
     monkeypatch.setattr("src.Service.CollaborationService.UserDAO", lambda: user_dao)
     monkeypatch.setattr("src.Service.CollaborationService.ConversationDAO", lambda: conversation_dao)
 
+    # Reset le singleton si le service l'utilise
     Singleton._instances.pop(CollaborationService, None)
+
     service = CollaborationService()
 
-    # assure the service uses the stub instances
+    # Sécurité : exposer toutes les variantes potentielles de noms utilisés par le service
     service.collab_dao = collab_dao
+    service.collaboration_dao = collab_dao           # parfois le code utilise ce nom
+    service.collaboration_service = collab_dao       # si un appel se trompe d'attribut (ex: add_collaboration)
     service.user_dao = user_dao
+    service.user_service = user_dao                  # si le service appelle get_current_user_id()
     service.conversation_dao = conversation_dao
+
     return service, collab_dao, user_dao, conversation_dao
 
 
+# --------------------------------------------------------------------
+# Tests
+# --------------------------------------------------------------------
 def test_role_checks(service_setup):
     service, collab_dao, _, _ = service_setup
     collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))

@@ -3,12 +3,12 @@ import datetime
 
 try:
     from ObjetMetier.Message import Message
-    from DAO.Message_DAO import MessageDAO
+    from DAO.MessageDAO import MessageDAO
     from Service.UserService import UserService
     from Service.AuthService import AuthService
 except Exception:
     from src.ObjetMetier.Message import Message
-    from src.DAO.Message_DAO import MessageDAO
+    from src.DAO.MessageDAO import MessageDAO
     from src.Service.UserService import UserService
     from src.Service.AuthService import AuthService
 
