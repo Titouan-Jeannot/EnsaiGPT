@@ -1,6 +1,6 @@
 import logging
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 from src.DAO.DBConnector import DBConnection
 
@@ -27,13 +27,16 @@ class MessageDAO:
         try:
             with DBConnection().connection as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, {
-                        "id_conversation": message.id_conversation,
-                        "id_user": message.id_user,
-                        "timestamp": message.datetime,  # ton objet Python a .datetime
-                        "message": message.message,
-                        "is_from_agent": message.is_from_agent,
-                    })
+                    cursor.execute(
+                        query,
+                        {
+                            "id_conversation": message.id_conversation,
+                            "id_user": message.id_user,
+                            "timestamp": message.datetime,  # ton objet Python a .datetime
+                            "message": message.message,
+                            "is_from_agent": message.is_from_agent,
+                        },
+                    )
                     row = cursor.fetchone()
                     message.id_message = row["id_message"] if row else None
             return message
@@ -45,7 +48,7 @@ class MessageDAO:
 
     def get_by_id(self, message_id: int) -> Optional[Message]:
         """Lit un message par son id."""
-        query = 'SELECT * FROM message WHERE id_message = %(id_message)s;'
+        query = "SELECT * FROM message WHERE id_message = %(id_message)s;"
         with DBConnection().connection as conn:
             with conn.cursor() as cursor:
                 cursor.execute(query, {"id_message": message_id})
@@ -120,7 +123,7 @@ class MessageDAO:
 
     def count_messages_by_conversation(self, conversation_id: int) -> int:
         """Compte le nombre de messages dans une conversation."""
-        query = 'SELECT COUNT(*) AS n FROM message WHERE id_conversation = %(id_conversation)s;'
+        query = "SELECT COUNT(*) AS n FROM message WHERE id_conversation = %(id_conversation)s;"
         with DBConnection().connection as conn:
             with conn.cursor() as cursor:
                 cursor.execute(query, {"id_conversation": conversation_id})
@@ -193,12 +196,14 @@ class MessageDAO:
         """
         with DBConnection().connection as conn:
             with conn.cursor() as cursor:
-                cursor.execute(query, {"message": message.message, "id_message": message.id_message})
+                cursor.execute(
+                    query, {"message": message.message, "id_message": message.id_message}
+                )
                 return cursor.rowcount == 1
 
     def delete_by_id(self, message_id: int) -> bool:
         """Supprime un message par son id."""
-        query = 'DELETE FROM message WHERE id_message = %(id_message)s;'
+        query = "DELETE FROM message WHERE id_message = %(id_message)s;"
         with DBConnection().connection as conn:
             with conn.cursor() as cursor:
                 cursor.execute(query, {"id_message": message_id})
@@ -226,7 +231,6 @@ class MessageDAO:
                     message=row["message"],
                     is_from_agent=row["is_from_agent"],
                 )
-
 
 
 '''import psycopg2
