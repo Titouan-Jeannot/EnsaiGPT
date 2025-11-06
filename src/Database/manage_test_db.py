@@ -1,8 +1,8 @@
 # src/Database/manage_test_db.py
 import psycopg2
 from psycopg2 import sql
-from .settings import DATABASE_URL, DATABASE_URL_TEST, dbname_from_url
-from .init_db import init_db_for_url
+from settings import DATABASE_URL, DATABASE_URL_TEST, dbname_from_url
+from init_db import init_db_for_url
 
 def ensure_test_db_exists():
     """Crée la DB de test si elle n'existe pas encore (hors transaction)."""
