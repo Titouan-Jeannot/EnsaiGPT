@@ -25,7 +25,7 @@ class UserDAO:
         """
         try:
             with DBConnection().connection as conn:
-                with conn.cursor() as cur:
+                with conn.cursor(RealDictCursor) as cur:
                     cur.execute(
                         query,
                         {
@@ -93,7 +93,7 @@ class UserDAO:
         """
         try:
             with DBConnection().connection as conn:
-                with conn.cursor() as cur:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     cur.execute(
                         query,
                         {
@@ -174,6 +174,17 @@ class UserDAO:
                     status=row["status"],
                     setting_param=row["setting_param"],
                 )
+
+    def update_last_login(self, user_id: int) -> None:
+        """
+        Met à jour la date du dernier login pour un utilisateur.
+        ajustement : Est-ce que c'est en UTC ?
+        """
+        query = "UPDATE users SET last_login = NOW() WHERE id_user = %(id)s;"
+        with DBConnection().connection as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, {"id": user_id})
+            conn.commit()
 
 
 '''import psycopg2

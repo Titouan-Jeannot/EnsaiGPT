@@ -1,5 +1,6 @@
 from typing import List, Optional
-import datetime
+from datetime import datetime, timezone
+from config import AGENT_USER_ID
 
 try:
     from ObjetMetier.Message import Message
@@ -63,7 +64,7 @@ class MessageService:
             except Exception as e:
                 raise ValueError("Utilisateur introuvable") from e
         # construire l'objet Message
-        now = datetime.datetime.now()
+        now = datetime.now(timezone.utc)
         msg_obj = Message(
             id_message=None,
             id_conversation=conversation_id,
@@ -135,11 +136,11 @@ class MessageService:
     def send_agent_message(self, conversation_id: int, message: str) -> Message:
         """Envoie un message depuis l'agent."""
         self.validate_message_content(message)
-        now = datetime.datetime.now()
+        now = datetime.now(timezone.utc)
         msg_obj = Message(
             id_message=None,
             id_conversation=conversation_id,
-            id_user=0,  # id spécial pour l'agent
+            id_user=AGENT_USER_ID,  # id spécial pour l'agent
             datetime=now,
             message=message,
             is_from_agent=True,

@@ -12,8 +12,8 @@ from src.ObjetMetier.Conversation import Conversation
 
 class SearchService:
     """
-    Service dédié à la recherche dans les messages et les conversations.
-    Toutes les recherches sont filtrées pour n'afficher que le contenu
+    Service dedie a la recherche dans les messages et les conversations.
+    Toutes les recherches sont filtrees pour n'afficher que le contenu
     accessible par l'utilisateur (via CollaborationDAO).
     """
 
@@ -39,7 +39,7 @@ class SearchService:
         collaborations: List[Collaboration] = self.collaboration_dao.find_by_user(user_id)
 
         # Inclure 'reader' pour coller aux tests SearchService
-        allowed_roles = {"ADMIN", "WRITER", "VIEWER", "READER"}
+        allowed_roles = {"ADMIN", "WRITER", "VIEWER"}
 
         conversation_ids = [
             c.id_conversation
@@ -53,9 +53,7 @@ class SearchService:
     # ------------------------------------------------------------------ #
 
     def search_messages_by_keyword(self, user_id: int, keyword: str) -> List[Message]:
-        """
-        Recherche des messages par mot-clé, limités aux conversations de l'utilisateur.
-        """
+        """Recherche des messages par mot-cle limites aux conversations de l'utilisateur."""
         if not keyword:
             return []
         conversation_ids = self._get_user_accessible_conversation_ids(user_id)
@@ -77,15 +75,15 @@ class SearchService:
     # ------------------------------------------------------------------ #
 
     def search_conversations_by_keyword(self, user_id: int, keyword: str) -> List[Conversation]:
-        """
-        Recherche des conversations par mot-clé dans le titre, limitées à celles de l'utilisateur.
-        """
+        """Recherche des conversations par mot-cle dans le titre."""
         if not keyword:
             return []
         return self.conversation_dao.search_conversations_by_title(user_id, keyword)
 
     def search_conversations_by_date(
-        self, user_id: int, target_date: datetime
+        self,
+        user_id: int,
+        target_date: datetime,
     ) -> List[Conversation]:
         """
         Recherche des conversations par date de création (journée entière), limitées à celles de l'utilisateur.

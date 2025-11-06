@@ -38,14 +38,7 @@ class FeedbackDAO:
                     row = cur.fetchone()
             if not row:
                 raise RuntimeError("Insertion feedback: RETURNING vide.")
-            return Feedback(
-                id_feedback=row["id_feedback"],
-                id_user=row["id_user"],
-                id_message=row["id_message"],
-                is_like=row["is_like"],
-                comment=row["comment"],
-                created_at=row["created_at"],
-            )
+            return created
         except Exception as e:
             logging.error(f"Erreur lors de la création du feedback : {e}")
             raise
@@ -64,16 +57,7 @@ class FeedbackDAO:
                 with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     cur.execute(query, {"id_feedback": id_feedback})
                     row = cur.fetchone()
-            if not row:
-                return None
-            return Feedback(
-                id_feedback=row["id_feedback"],
-                id_user=row["id_user"],
-                id_message=row["id_message"],
-                is_like=row["is_like"],
-                comment=row["comment"],
-                created_at=row["created_at"],
-            )
+            return self._row_to_feedback(row)
         except Exception as e:
             logging.error(f"Erreur lecture feedback {id_feedback} : {e}")
             raise
