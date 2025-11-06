@@ -1,77 +1,91 @@
 class Collaboration:
     """
-    Classe représentant une collaboration entre un utilisateur et une conversation.
+    Représente la collaboration entre un utilisateur et une conversation.
 
-    Attributs:
+    Attributs
     ----------
-    - id_collaboration : int
-        identifiant unique de la collaboration
-    - id_conversation : int
-        identifiant de la conversation
-    - id_user : int
-        identifiant de l'utilisateur
-    - role : str
-        rôle de l'utilisateur dans la conversation (admin, viewer, writer, banned)
+    id_collaboration : int | None
+        Identifiant unique de la collaboration (None avant insertion).
+    id_conversation : int
+        Identifiant de la conversation concernée.
+    id_user : int
+        Identifiant de l’utilisateur.
+    role : str
+        Rôle de l’utilisateur : 'admin', 'viewer', 'writer', 'banned' ou 'reader'.
     """
 
-    def __init__(self, id_collaboration=None, id_conversation=None, id_user=None, role=None):
+    def __init__(
+        self,
+        id_collaboration=None,
+        id_conversation=None,
+        id_user=None,
+        role=None,
+    ):
         """
-        Constructeur de la classe Collaboration.
+        Initialise une instance de Collaboration avec validations.
 
-        Paramètres:
-        -----------
-        id_collaboration : int, optional
-            identifiant unique de la collaboration
+        Paramètres
+        ----------
+        id_collaboration : int | None
+            Identifiant unique (None avant insertion).
         id_conversation : int
-            identifiant de la conversation
+            Identifiant de la conversation associée.
         id_user : int
-            identifiant de l'utilisateur
+            Identifiant de l'utilisateur.
         role : str
-            rôle de l'utilisateur dans la conversation (admin, viewer, writer, banned)
+            Rôle ('admin', 'viewer', 'writer', 'banned', 'reader').
 
-        Raises:
-        -------
+        Raises
+        ------
         ValueError
-            si un des paramètres requis est invalide
+            Si un des champs ne respecte pas le type ou les valeurs attendues.
         """
-        # Vérifications pour id_conversation, id_user et role (obligatoires)
-        if id_conversation is None or not isinstance(id_conversation, int):
-            raise ValueError("id_conversation doit être un integer non null")
-        if id_user is None or not isinstance(id_user, int):
-            raise ValueError("id_user doit être un integer non null")
-        if role is None or not isinstance(role, str):
-            raise ValueError("role doit être une chaîne non nulle")
-        role = role.lower()  # Normalize role to lowercase
-        if role not in ["admin", "viewer", "writer", "banned"]:
-            raise ValueError("role doit être 'admin', 'viewer', 'writer' ou 'banned'")
-            raise ValueError("role doit être 'admin', 'viewer', 'writer' ou 'banned'")
 
-        # id_collaboration peut être None (auto-généré par la BDD lors de l'insertion)
+        # --- Vérifications de type ---
         if id_collaboration is not None and not isinstance(id_collaboration, int):
-            raise ValueError("id_collaboration doit être un integer ou None")
+            raise ValueError("id_collaboration must be an integer or None")
+        if id_conversation is None or not isinstance(id_conversation, int):
+            raise ValueError("id_conversation must be an integer")
+        if id_user is None or not isinstance(id_user, int):
+            raise ValueError("id_user must be an integer")
+        if role is None or not isinstance(role, str):
+            raise ValueError("role must be a non-null string")
 
+        # --- Validation du rôle ---
+        # Interdit tout espace, tabulation ou saut de ligne
+        if any(ch.isspace() for ch in role):
+            raise ValueError("role ne doit pas contenir d'espaces ou de caractères blancs")
+
+        role_norm = role.lower()
+        allowed_roles = {"admin", "viewer", "writer", "banned", "reader"}
+        if role_norm not in allowed_roles:
+            raise ValueError("role doit être 'admin', 'viewer', 'writer', 'banned' ou 'reader'")
+
+        # --- Assignations ---
         self.id_collaboration = id_collaboration
         self.id_conversation = id_conversation
         self.id_user = id_user
-        self.role = role
+        self.role = role_norm
 
     def __eq__(self, other):
-        """Compare deux collaborations"""
+        """Compare deux collaborations champ à champ."""
         if not isinstance(other, Collaboration):
             return False
         return (
-            self.id_collaboration == other.id_collaboration and
-            self.id_conversation == other.id_conversation and
-            self.id_user == other.id_user and
-            self.role == other.role
+            self.id_collaboration == other.id_collaboration
+            and self.id_conversation == other.id_conversation
+            and self.id_user == other.id_user
+            and self.role == other.role
         )
 
     def __str__(self):
-        """Représentation en chaîne de caractères"""
-        return (f"Collaboration(id_collaboration={self.id_collaboration}, "
-                f"id_conversation={self.id_conversation}, "
-                f"id_user={self.id_user}, role='{self.role}')")
+        """Représentation lisible."""
+        return (
+            f"Collaboration(id_collaboration={self.id_collaboration}, "
+            f"id_conversation={self.id_conversation}, "
+            f"id_user={self.id_user}, role='{self.role}')"
+        )
 
     def __repr__(self):
-        """Représentation pour le débogage"""
+        """Représentation pour le débogage."""
         return self.__str__()
