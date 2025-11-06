@@ -72,7 +72,7 @@ class LLMService:
         conversation_dao: Optional[ConversationDAO] = None,
         user_dao: Optional[UserDAO] = None,
         banned_service: Optional[Any] = None,
-        default_system_prompt: str = "You are a helpful assistant.",
+        default_system_prompt: str = "Tu es un assiastant IA utile.",
         default_temperature: float = 0.7,
         default_max_tokens: int = 512,
         model: Optional[str] = None,
