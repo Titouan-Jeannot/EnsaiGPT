@@ -25,8 +25,8 @@ class UserService:
     def __init__(self, user_dao: UserDAO, auth_service: AuthService):
         """Initialise le service avec une instance de UserDAO et AuthService."""
         self.user_dao = user_dao
-        if not isinstance(auth_service, AuthService):
-            raise ValueError("auth_service doit être une instance de AuthService")
+        #if not isinstance(auth_service, AuthService):
+        #    raise ValueError("auth_service doit être une instance de AuthService")
         self.auth_service = auth_service
 
     def create_user(

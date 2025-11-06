@@ -42,10 +42,20 @@ class Session:
 
 
 session = Session()
-
+print("Initialisation des services...")
+print(session)
 user_dao = UserDAO()
+print(user_dao)
 auth_service = AuthService(user_dao)
+print(auth_service)
+print("Verification des instances...")
+print(isinstance(user_dao, UserDAO))
+print(isinstance(auth_service, AuthService))
+print(isinstance(UserService(user_dao, auth_service), UserService))
+print("fin de la verification.")
 user_service = UserService(user_dao, auth_service)
+print(isinstance(user_service, UserService))
+print(user_service)
 
 message_dao = MessageDAO()
 collab_dao = CollaborationDAO()
@@ -60,6 +70,7 @@ conv_service = ConversationService(
     conversation_dao, collab_service, user_service, msg_service
 )
 search_service = SearchService(message_dao, conversation_dao, collab_dao)
+print(feedback_dao)
 feedback_service = FeedbackService(feedback_dao)
 
 
@@ -211,17 +222,17 @@ def authenticate_credentials(mail: str, password: str):
             user = auth_fn(mail, password)
         except AttributeError as exc:
             if "verify_password" not in str(exc):
-                print(f"Erreur d'authentification: {exc}")
+                print(f"Erreur d'authentification 1: {exc}")
                 return None
         except Exception as exc:
-            print(f"Erreur d'authentification: {exc}")
+            print(f"Erreur d'authentification 2: {exc}")
             return None
         if user:
             return user
     try:
         return auth_service.authenticate(mail, password)
     except Exception as exc:
-        print(f"Erreur d'authentification: {exc}")
+        print(f"Erreur d'authentification 3: {exc}")
         return None
 
 
