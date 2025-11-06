@@ -5,9 +5,9 @@ from typing import List, Optional
 from src.DAO.DBConnector import DBConnection
 # Assurez-vous que l'importation de Message est correcte dans votre environnement
 try:
-    from src.Objet_Metier.Message import Message
+    from src.ObjetMetier.Message import Message
 except Exception:
-    from Objet_Metier.Message import Message
+    from ObjetMetier.Message import Message
 
 
 class MessageDAO:
@@ -161,21 +161,21 @@ class MessageDAO:
     def search_by_keyword(self, keyword: str, conversation_ids: List[int]) -> List[Message]:
         """
         Recherche des messages contenant un mot-clé, limités aux conversations spécifiées.
-        
+
         Parameters
         ----------
         keyword : str
             Le mot-clé à rechercher (recherche insensible à la casse).
         conversation_ids : List[int]
             Liste des IDs de conversation autorisées pour la recherche.
-            
+
         Returns
         -------
         List[Message]
         """
         if not conversation_ids:
             return []
-            
+
         query = """
         SELECT * FROM message
         WHERE id_conversation IN %(ids)s
@@ -206,22 +206,22 @@ class MessageDAO:
         except Exception as e:
             logging.error(f"Erreur recherche messages par mot-clé (multi-conv): {e}")
             return []
-            
+
     # =======================================================================
     # NOUVELLE MÉTHODE POUR SearchService : Recherche par date (multi-conv)
     # =======================================================================
     def search_by_date(self, target_date: datetime, conversation_ids: List[int]) -> List[Message]:
         """
-        Recherche des messages créés à une date donnée (journée entière), 
+        Recherche des messages créés à une date donnée (journée entière),
         limités aux conversations spécifiées.
         """
         if not conversation_ids:
             return []
-            
+
         # Définir le début et la fin de la journée pour la recherche
         start_of_day = datetime.combine(target_date.date(), time.min)
         end_of_day = datetime.combine(target_date.date(), time.max)
-        
+
         query = """
         SELECT * FROM message
         WHERE id_conversation IN %(ids)s
