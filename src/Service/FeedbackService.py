@@ -15,8 +15,8 @@ class FeedbackService(metaclass=Singleton):
     Aucun accès direct à la BDD : tout passe par FeedbackDAO.
     """
 
-    def __init__(self):
-        self.dao = FeedbackDAO()
+    def __init__(self, dao: FeedbackDAO = None):
+        self.dao = dao or FeedbackDAO()
 
     # ------------------------------ Create -------------------------------- #
 
