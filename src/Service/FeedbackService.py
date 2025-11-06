@@ -52,12 +52,14 @@ class FeedbackService(metaclass=Singleton):
 
     @log
     def get_feedback_by_message(self, message_id: int) -> List[Feedback]:
+        """Retourne tous les feedbacks liés à un message."""
         if not isinstance(message_id, int) or message_id < 0:
             raise ValueError("message_id doit être un entier positif")
         return self.dao.find_by_message(message_id)
 
     @log
     def get_feedback_by_user(self, user_id: int) -> List[Feedback]:
+        """Retourne tous les feedbacks laissés par un utilisateur."""
         if not isinstance(user_id, int) or user_id < 0:
             raise ValueError("user_id doit être un entier positif")
         return self.dao.find_by_user(user_id)
@@ -66,12 +68,14 @@ class FeedbackService(metaclass=Singleton):
 
     @log
     def count_likes(self, message_id: int) -> int:
+        """Compte les likes associés à un message."""
         if not isinstance(message_id, int) or message_id < 0:
             raise ValueError("message_id doit être un entier positif")
         return self.dao.count_likes(message_id)
 
     @log
     def count_dislikes(self, message_id: int) -> int:
+        """Compte les dislikes associés à un message."""
         if not isinstance(message_id, int) or message_id < 0:
             raise ValueError("message_id doit être un entier positif")
         return self.dao.count_dislikes(message_id)
