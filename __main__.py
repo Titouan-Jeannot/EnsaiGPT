@@ -217,20 +217,31 @@ def authenticate_credentials(mail: str, password: str):
     """Tente d'authentifier via UserService puis AuthService."""
     user = None
     auth_fn = getattr(user_service, "authenticate_user", None)
+    print(f"auth_fn: {auth_fn}")
+    # print(isinstance(auth_fn, user))
+    print(callable(auth_fn))
     if callable(auth_fn):
+        print("appel de user_service.authenticate_user callable")
         try:
+            print("avant appel 12")
             user = auth_fn(mail, password)
+            print(user)
         except AttributeError as exc:
-            if "verify_password" not in str(exc):
+            print("erreur 11")
+            if "verify_mdp" not in str(exc):
                 print(f"Erreur d'authentification 1: {exc}")
                 return None
         except Exception as exc:
+            print("erreur 12")
             print(f"Erreur d'authentification 2: {exc}")
             return None
         if user:
+            print("utilisateur trouve via user_service")
             return user
     try:
+        print(f"auth_service.authenticate: {auth_service.authenticate(mail, password)}")
         return auth_service.authenticate(mail, password)
+
     except Exception as exc:
         print(f"Erreur d'authentification 3: {exc}")
         return None
@@ -266,10 +277,22 @@ def page_login() -> None:
         password = ask_nonempty("Mot de passe")
     except BackCommand:
         return
-    user = authenticate_credentials(mail, password)
-    if not user:
-        print("Identifiants invalides.")
+
+    try:
+        user = user_service.authenticate_user(mail, password)
+        if not user:
+            print("Identifiants invalides.")
+            return
+
+    except Exception as e:
+        # ici, toute vraie exception -> message interne propre
+        print(f"Erreur interne lors de la connexion : {e}")  # ou log + msg générique
         return
+
+    user = authenticate_credentials(mail, password)
+    print("Debug apres auth:")
+    print(user) # ajustement : user est None ici
+
     session.current_user_id = getattr(user, "id", None)
     session.current_username = getattr(user, "username", "Utilisateur")
     session.current_conv_id = None

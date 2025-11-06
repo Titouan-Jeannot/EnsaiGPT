@@ -5,6 +5,8 @@ import hmac
 import time
 import re
 from typing import Optional
+from datetime import datetime, timedelta, timezone
+
 
 try:
     from ObjetMetier.User import User
@@ -109,8 +111,8 @@ class AuthService:
 
         # blocage si délai non écoulé depuis dernier échec pour cet email
         last = self._last_failed.get(mail)
-        now = datetime.datetime.now() #ajustement : il faut timestamps pour la bdd il y avait time.time(), mais jsp si on peut faire une soustraction a la ligne d'en dessous avec timestamps
-        if last and (now - last) < self.RETRY_DELAY_SECONDS:
+        now = datetime.now(timezone.utc)
+        if last and (now - last).total_seconds() < self.RETRY_DELAY_SECONDS:
             print("3")
             return None
 
@@ -146,7 +148,7 @@ class AuthService:
 
     def _register_failed(self, mail: str):
         """Enregistre le timestamp du dernier échec (pas de compteur)."""
-        self._last_failed[mail] = datetime.datetime.now() # time.time()
+        self._last_failed[mail] = datetime.now(timezone.utc)
 
     # ----- Méthodes utilitaires appelées par UserService -----
     def check_user_exists(self, user_id: int):

@@ -12,7 +12,7 @@ import re
 import os
 import base64
 import hashlib
-import datetime
+from datetime import datetime, timezone
 
 
 class UserService:
@@ -75,7 +75,7 @@ class UserService:
             mail=mail,
             password_hash=password_hash,
             salt=salt,
-            sign_in_date=datetime.datetime.now(),
+            sign_in_date=datetime.now(timezone.utc),
             last_login=None,
             status="active",
             setting_param="Tu es un assistant utile.",
@@ -234,9 +234,9 @@ class UserService:
             return None
 
         # Vérifier le mot de passe
-        if self.auth_service.verify_password(password_plain, user.password_hash, user.salt):
+        if self.auth_service.verify_mdp(password_plain, user.password_hash, user.salt):
             # Mettre à jour la date du dernier login
-            user.last_login = datetime.datetime.now()
+            user.last_login = datetime.now(timezone.utc)
             self.user_dao.update(user)
             return user
         return None

@@ -26,7 +26,7 @@ class MessageDAO:
         """
         try:
             with DBConnection().connection as conn:
-                with conn.cursor() as cursor:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute(
                         query,
                         {
