@@ -15,8 +15,8 @@ if str(PROJECT_SRC) not in sys.path:
     sys.path.insert(0, str(PROJECT_SRC))
 
 OBJET_METIER = importlib.import_module("ObjetMetier")
-sys.modules.setdefault("Objet_Metier", OBJET_METIER)
-sys.modules.setdefault("src.Objet_Metier", OBJET_METIER)
+sys.modules.setdefault("ObjetMetier", OBJET_METIER)
+sys.modules.setdefault("src.ObjetMetier", OBJET_METIER)
 
 UTILS_MODULE = importlib.import_module("Utils")
 sys.modules.setdefault("src.Utils", UTILS_MODULE)

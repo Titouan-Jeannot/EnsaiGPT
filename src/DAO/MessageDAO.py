@@ -5,9 +5,9 @@ from typing import List, Optional
 from src.DAO.DBConnector import DBConnection
 # Assurez-vous que l'importation de Message est correcte dans votre environnement
 try:
-    from src.Objet_Metier.Message import Message
+    from src.ObjetMetier.Message import Message
 except Exception:
-    from Objet_Metier.Message import Message
+    from ObjetMetier.Message import Message
 
 
 class MessageDAO:

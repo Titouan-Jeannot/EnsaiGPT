@@ -5,7 +5,7 @@ from src.DAO.CollaborationDAO import CollaborationDAO
 from src.DAO.ConversationDAO import ConversationDAO
 from src.DAO.MessageDAO import MessageDAO
 
-from src.Objet_Metier.Message import Message
+from src.ObjetMetier.Message import Message
 from src.ObjetMetier.Collaboration import Collaboration
 from src.ObjetMetier.Conversation import Conversation
 
