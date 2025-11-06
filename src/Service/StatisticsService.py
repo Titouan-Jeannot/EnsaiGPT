@@ -1,7 +1,9 @@
 from typing import List, Optional, Dict, Tuple, TYPE_CHECKING
 import datetime
 
-# Entités métiers (légères)
+# -----------------------------
+# Import des entités métiers
+# -----------------------------
 try:
     from ObjetMetier.Message import Message
     from ObjetMetier.Conversation import Conversation
@@ -13,47 +15,37 @@ except Exception:
     from src.ObjetMetier.User import User  # type: ignore
     from src.ObjetMetier.Collaboration import Collaboration  # type: ignore
 
-# ⚠️ Ne PAS importer les DAO/Services au runtime (évite dotenv/psycopg2 pendant les tests)
+# -----------------------------
+# Typage conditionnel (DAO uniquement pour mypy)
+# -----------------------------
 if TYPE_CHECKING:
-    try:
-        from DAO.MessageDAO import MessageDAO
-        from DAO.ConversationDAO import ConversationDAO
-        from DAO.CollaborationDAO import CollaborationDAO
-        from DAO.UserDAO import UserDAO
-        from Service.UserService import UserService
-    except Exception:  # type: ignore
-        from src.DAO.MessageDAO import MessageDAO  # type: ignore
-        from src.DAO.ConversationDAO import ConversationDAO  # type: ignore
-        from src.DAO.CollaborationDAO import CollaborationDAO  # type: ignore
-        from src.DAO.UserDAO import UserDAO  # type: ignore
-        from src.Service.UserService import UserService  # type: ignore
+    from src.DAO.MessageDAO import MessageDAO
+    from src.DAO.ConversationDAO import ConversationDAO
+    from src.DAO.CollaborationDAO import CollaborationDAO
+    from src.DAO.UserDAO import UserDAO
+    from src.Service.UserService import UserService
 else:
-    from typing import Any as MessageDAO  # type: ignore
-    from typing import Any as ConversationDAO  # type: ignore
-    from typing import Any as CollaborationDAO  # type: ignore
-    from typing import Any as UserDAO  # type: ignore
-    from typing import Any as UserService  # type: ignore
+    MessageDAO = object  # type: ignore
+    ConversationDAO = object  # type: ignore
+    CollaborationDAO = object  # type: ignore
+    UserDAO = object  # type: ignore
+    UserService = object  # type: ignore
 
 
+# ===================================================================
+#                        SERVICE DE STATISTIQUES
+# ===================================================================
 class StatisticsService:
     """
-    Service de statistiques.
-
-    Méthodes (UML) :
+    Service fournissant diverses statistiques d’utilisation :
       - nb_conv(user_id)
+      - nb_messages(user_id)
+      - nb_message_conv(conversation_id)
+      - nb_messages_de_user_par_conv(user_id, conversation_id)
       - temps_passe(user_id)
       - temps_passe_par_conv(user_id, conversation_id)
-      - nb_messages(user_id)
-      - nb_messages_de_user_par_conv(user_id, conversation_id)
-      - nb_message_conv(conversation_id)
       - top_active_users(limit)
       - average_message_length()
-
-    Sessions :
-    - Une session continue tant que l'écart entre deux messages successifs
-      n'excède pas idle_threshold (10 min par défaut).
-    - temps_passe(user_id) = SOMME des durées par conversation (mode par défaut).
-      Si simple_window=True : fenêtre GLOBALE (du 1er au dernier message, toutes conv confondues).
     """
 
     def __init__(
@@ -72,7 +64,9 @@ class StatisticsService:
         self.user_service = user_service
         self.idle_threshold = idle_threshold
 
-    # ------------------------------- Helpers -------------------------------
+    # ------------------------------------------------------------
+    #                       UTILITAIRES
+    # ------------------------------------------------------------
     def _get_callable(self, obj, *names):
         for n in names:
             fn = getattr(obj, n, None)
@@ -84,12 +78,12 @@ class StatisticsService:
         if not isinstance(value, int) or value < 0:
             raise ValueError(f"{name} invalide")
 
-    # ------------------------------- Compteurs ------------------------------
+    # ------------------------------------------------------------
+    #                    NOMBRE DE CONVERSATIONS
+    # ------------------------------------------------------------
     def nb_conv(self, user_id: int) -> int:
-        """Nombre de conversations auxquelles l'utilisateur participe."""
         self._validate_id("user_id", user_id)
 
-        # 1) CollaborationDAO
         if self.collaboration_dao:
             fn = self._get_callable(
                 self.collaboration_dao,
@@ -116,7 +110,6 @@ class StatisticsService:
                 except Exception:
                     pass
 
-        # 2) Fallback: via messages
         fn_msgs_user = self._get_callable(
             self.message_dao,
             "get_messages_by_user",
@@ -132,8 +125,10 @@ class StatisticsService:
 
         raise RuntimeError("Impossible de calculer nb_conv avec les DAO fournis")
 
+    # ------------------------------------------------------------
+    #                    NOMBRE DE MESSAGES
+    # ------------------------------------------------------------
     def nb_messages(self, user_id: int) -> int:
-        """Nombre total de messages envoyés par l'utilisateur (toutes conversations)."""
         self._validate_id("user_id", user_id)
 
         fn = self._get_callable(self.message_dao, "count_messages_by_user", "count_by_user")
@@ -153,7 +148,6 @@ class StatisticsService:
         raise RuntimeError("Aucune méthode DAO pour compter les messages d'un utilisateur")
 
     def nb_message_conv(self, conversation_id: int) -> int:
-        """Nombre total de messages dans une conversation."""
         self._validate_id("conversation_id", conversation_id)
 
         fn = self._get_callable(self.message_dao, "count_messages_by_conversation", "count_by_conversation")
@@ -168,7 +162,6 @@ class StatisticsService:
         raise RuntimeError("Aucune méthode DAO pour compter les messages d'une conversation")
 
     def nb_messages_de_user_par_conv(self, user_id: int, conversation_id: int) -> int:
-        """Nombre de messages d'un utilisateur dans une conversation donnée."""
         self._validate_id("user_id", user_id)
         self._validate_id("conversation_id", conversation_id)
 
@@ -196,25 +189,19 @@ class StatisticsService:
 
         raise RuntimeError("Aucune méthode DAO compatible pour nb_messages_de_user_par_conv")
 
-    # ------------------------ Temps passé (sessions) ------------------------
+    # ------------------------------------------------------------
+    #                    TEMPS PASSÉ (SESSIONS)
+    # ------------------------------------------------------------
     def temps_passe(self, user_id: int, *, simple_window: bool = False) -> datetime.timedelta:
-        """
-        Temps total passé par l'utilisateur.
-        - Mode sessions (par défaut) : SOMME des durées par conversation.
-        - Mode simple_window=True : fenêtre GLOBALE (du 1er au dernier message, toutes conv confondues).
-        """
         self._validate_id("user_id", user_id)
 
-        # simple_window => global
         if simple_window:
             timestamps = self._get_sorted_timestamps_for_user(user_id)
             return self._compute_sessions_duration(timestamps, simple_window=True)
 
-        # sessions par conversation
         total = datetime.timedelta(0)
         conv_ids = self._get_conversation_ids_of_user(user_id)
 
-        # Fallback si aucune conv détectée
         if not conv_ids:
             timestamps = self._get_sorted_timestamps_for_user(user_id)
             return self._compute_sessions_duration(timestamps, simple_window=False)
@@ -228,15 +215,15 @@ class StatisticsService:
     def temps_passe_par_conv(
         self, user_id: int, conversation_id: int, *, simple_window: bool = False
     ) -> datetime.timedelta:
-        """Temps total passé par l'utilisateur dans une conversation donnée."""
         self._validate_id("user_id", user_id)
         self._validate_id("conversation_id", conversation_id)
         timestamps = self._get_sorted_timestamps_for_user_in_conv(user_id, conversation_id)
         return self._compute_sessions_duration(timestamps, simple_window=simple_window)
 
-    # ------------------------------- Agrégats -------------------------------
+    # ------------------------------------------------------------
+    #                        AGRÉGATS
+    # ------------------------------------------------------------
     def top_active_users(self, limit: int = 10) -> List[Tuple[int, int]]:
-        """Retourne [(user_id, nb_messages)] trié décroissant."""
         if limit <= 0:
             raise ValueError("limit doit être > 0")
 
@@ -264,7 +251,6 @@ class StatisticsService:
         raise RuntimeError("Aucune méthode DAO compatible pour top_active_users")
 
     def average_message_length(self) -> float:
-        """Longueur moyenne des messages en caractères."""
         fn = self._get_callable(self.message_dao, "get_average_message_length", "avg_message_length")
         if fn:
             try:
@@ -282,7 +268,9 @@ class StatisticsService:
 
         raise RuntimeError("Aucune méthode DAO compatible pour average_message_length")
 
-    # ------------------------- Implémentation interne -----------------------
+    # ------------------------------------------------------------
+    #                MÉTHODES INTERNES D’AIDE
+    # ------------------------------------------------------------
     def _get_sorted_timestamps_for_user(self, user_id: int) -> List[datetime.datetime]:
         fn = self._get_callable(self.message_dao, "get_messages_by_user", "get_by_user", "get_messages_for_user")
         if fn:
@@ -330,7 +318,12 @@ class StatisticsService:
 
     def _get_conversation_ids_of_user(self, user_id: int) -> List[int]:
         if self.collaboration_dao:
-            fn = self._get_callable(self.collaboration_dao, "get_by_user_id", "get_collaborations_by_user", "read_by_user")
+            fn = self._get_callable(
+                self.collaboration_dao,
+                "get_by_user_id",
+                "get_collaborations_by_user",
+                "read_by_user",
+            )
             if fn:
                 colls: List[Collaboration] = fn(user_id)
                 return list({c.id_conversation for c in colls})
@@ -339,9 +332,22 @@ class StatisticsService:
             fn = self._get_callable(self.conversation_dao, "get_list_conv", "get_conversations_by_user")
             if fn:
                 convs: List[Conversation] = fn(user_id)
-                return [c.id_conversation for c in convs]
+                # Uniques en préservant l'ordre
+                seen = set()
+                out: List[int] = []
+                for c in convs:
+                    cid = c.id_conversation
+                    if cid not in seen:
+                        seen.add(cid)
+                        out.append(cid)
+                return out
 
-        fn_msgs_user = self._get_callable(self.message_dao, "get_messages_by_user", "get_by_user", "get_messages_for_user")
+        fn_msgs_user = self._get_callable(
+            self.message_dao,
+            "get_messages_by_user",
+            "get_by_user",
+            "get_messages_for_user",
+        )
         if fn_msgs_user:
             msgs: List[Message] = fn_msgs_user(user_id)
             return list({m.id_conversation for m in msgs})
