@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, time
 from typing import List, Optional
+from psycopg2.extras import RealDictCursor
 
 from src.DAO.DBConnector import DBConnection
 # Assurez-vous que l'importation de Message est correcte dans votre environnement
@@ -50,7 +51,7 @@ class MessageDAO:
         """Lit un message par son id."""
         query = "SELECT * FROM message WHERE id_message = %(id_message)s;"
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, {"id_message": message_id})
                 row = cursor.fetchone()
                 if not row:
@@ -75,7 +76,7 @@ class MessageDAO:
         """
         messages: List[Message] = []
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, {"id_conversation": conversation_id})
                 for row in cursor.fetchall() or []:
                     messages.append(
@@ -103,7 +104,7 @@ class MessageDAO:
         """
         messages: List[Message] = []
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     query,
                     {"id_conversation": conversation_id, "limit": per_page, "offset": offset},
@@ -125,7 +126,7 @@ class MessageDAO:
         """Compte le nombre de messages dans une conversation."""
         query = "SELECT COUNT(*) AS n FROM message WHERE id_conversation = %(id_conversation)s;"
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, {"id_conversation": conversation_id})
                 row = cursor.fetchone()
                 return int(row["n"]) if row and "n" in row else 0
@@ -140,7 +141,7 @@ class MessageDAO:
         """
         messages: List[Message] = []
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, {"id_conversation": conversation_id, "kw": f"%{keyword}%"})
                 for row in cursor.fetchall() or []:
                     messages.append(
@@ -185,7 +186,7 @@ class MessageDAO:
         messages: List[Message] = []
         try:
             with DBConnection().connection as conn:
-                with conn.cursor() as cursor:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     # psycopg2 gère la conversion de tuple en liste pour la clause IN
                     cursor.execute(query, {
                         "ids": tuple(conversation_ids),
@@ -231,7 +232,7 @@ class MessageDAO:
         messages: List[Message] = []
         try:
             with DBConnection().connection as conn:
-                with conn.cursor() as cursor:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute(query, {
                         "ids": tuple(conversation_ids),
                         "start": start_of_day,
@@ -266,7 +267,7 @@ class MessageDAO:
         """
         messages: List[Message] = []
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     query,
                     {"id_conversation": conversation_id, "start": start_date, "end": end_date},
@@ -294,7 +295,7 @@ class MessageDAO:
          WHERE id_message = %(id_message)s;
         """
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     query, {"message": message.message, "id_message": message.id_message}
                 )
@@ -304,7 +305,7 @@ class MessageDAO:
         """Supprime un message par son id."""
         query = "DELETE FROM message WHERE id_message = %(id_message)s;"
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, {"id_message": message_id})
                 return cursor.rowcount > 0
 
@@ -317,7 +318,7 @@ class MessageDAO:
         LIMIT 1;
         """
         with DBConnection().connection as conn:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, {"id_conversation": conversation_id})
                 row = cursor.fetchone()
                 if not row:
