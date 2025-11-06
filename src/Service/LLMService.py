@@ -1,51 +1,53 @@
-from typing import List, Optional, Dict, Any, TYPE_CHECKING, Tuple
+# src/Service/LLMService.py
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import datetime
+import os
 
 """
-LLMService
-----------
+LLMService (version intégrée)
+-----------------------------
 
-Objectif: encapsuler l'appel à un modèle de langage (LLM) de façon découplée
-et testable (provider injecté), en restant cohérent avec le style de vos services.
+Service qui communique DIRECTEMENT avec l'API ENSAI-GPT :
 
-Fonctions principales:
-- simple_complete(prompt) -> str : complétion directe.
-- generate_agent_reply(conversation_id, user_id, ...) -> Message :
-    * construit le contexte (messages récents d'une conversation)
-    * appelle le provider LLM
-    * persiste la réponse comme message de l'agent (is_from_agent=True)
-- summarize_conversation(conversation_id, ...) -> str : résumé de la conversation.
-- count_tokens(text) -> int : comptage via provider si disponible (fallback heuristique).
+  POST https://ensai-gpt-109912438483.europe-west4.run.app/chat/generate
+  Body:
+    {
+      "messages": [{"role":"system"|"user"|"assistant", "content":"..."}],
+      "temperature": 0.7,
+      "max_tokens": 512,
+      "model": "..."
+    }
 
-Sécurité:
-- possibilité d'injecter un MotsBannisService (ou équivalent) pour filtrer prompt / sortie.
+Réponse attendue:
+    {
+      "content": "...",
+      "usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}
+    }
 
-Dépendances DAO/Services:
-- MessageDAO pour lire/écrire les messages
-- (optionnel) ConversationDAO, UserDAO
-- (optionnel) MotsBannisService-like (nom libre), via duck typing
+Fonctions exposées :
+- simple_complete(prompt) -> str
+- generate_agent_reply(conversation_id, user_id) -> Message
 
-Aucune dépendance réseau au runtime dans ce module: le provider est injecté
-par l'appelant (il peut être un Fake en tests, un vrai client OpenAI/HF en prod).
+L'historique COMPLET de la conversation est automatiquement envoyé.
 """
 
-# --- Entités métiers (légères) ---
+# --- Entités métiers ---
 try:
     from ObjetMetier.Message import Message
     from ObjetMetier.Conversation import Conversation
     from ObjetMetier.User import User
-except Exception:
+except Exception:  # import fallback
     from src.ObjetMetier.Message import Message  # type: ignore
     from src.ObjetMetier.Conversation import Conversation  # type: ignore
     from src.ObjetMetier.User import User  # type: ignore
 
-# --- Types DAO / Services uniquement pour l'analyse statique ---
+# --- DAO (typing uniquement) ---
 if TYPE_CHECKING:
     try:
         from DAO.MessageDAO import MessageDAO
         from DAO.ConversationDAO import ConversationDAO
         from DAO.UserDAO import UserDAO
-    except Exception:  # type: ignore
+    except Exception:
         from src.DAO.MessageDAO import MessageDAO  # type: ignore
         from src.DAO.ConversationDAO import ConversationDAO  # type: ignore
         from src.DAO.UserDAO import UserDAO  # type: ignore
@@ -57,57 +59,126 @@ else:
 
 class LLMService:
     """
-    Service d'orchestration LLM (provider-injected, testable, sans dépendances lourdes).
-
-    Provider attendu (duck typing):
-        - chat(messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]
-            retourne au minimum {"content": str, "usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}}
-        - (optionnel) count_tokens(text: str) -> int
-
-    Exemples de messages pour provider.chat:
-        [{"role": "system", "content": "..."},
-         {"role": "user",   "content": "..."},
-         {"role": "assistant", "content": "..."}]
+    Service d'orchestration du LLM avec appel HTTP direct à l'API ENSAI-GPT.
     """
 
     def __init__(
         self,
         message_dao: MessageDAO,
-        provider: Any,
+        *,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        requests_session: Optional[Any] = None,
         conversation_dao: Optional[ConversationDAO] = None,
         user_dao: Optional[UserDAO] = None,
         banned_service: Optional[Any] = None,
-        *,
         default_system_prompt: str = "You are a helpful assistant.",
-        max_history_messages: int = 20,
         default_temperature: float = 0.7,
         default_max_tokens: int = 512,
         model: Optional[str] = None,
+        timeout: float = 20.0,
     ) -> None:
+        """
+        - base_url: par défaut lit LLM_API_BASE_URL, sinon utilise l'URL ENSAI-GPT fournie.
+        - api_key: optionnel (Authorization: Bearer ...)
+        - requests_session: optionnel (pour tests/mocks)
+        """
         self.message_dao = message_dao
-        self.provider = provider
         self.conversation_dao = conversation_dao
         self.user_dao = user_dao
         self.banned_service = banned_service
+
         self.default_system_prompt = default_system_prompt
-        self.max_history_messages = max_history_messages
         self.default_temperature = default_temperature
         self.default_max_tokens = default_max_tokens
         self.model = model
+        self.timeout = timeout
+
+        self.base_url = (
+            base_url
+            or os.environ.get("LLM_API_BASE_URL")
+            or "https://ensai-gpt-109912438483.europe-west4.run.app"
+        ).rstrip("/")
+        self.api_key = api_key or os.environ.get("LLM_API_KEY")
+
+        try:
+            import requests  # noqa: F401
+        except Exception as e:
+            raise RuntimeError("LLMService requiert 'requests' (pip install requests).") from e
+
+        # session réutilisable (meilleur pour tests et perfs)
+        if requests_session is None:
+            import requests
+            self._session = requests.Session()
+        else:
+            self._session = requests_session
 
     # ------------------------------------------------------------------
-    # Helpers (style commun)
+    # Helpers
     # ------------------------------------------------------------------
-    def _get_callable(self, obj, *names):
-        for n in names:
-            fn = getattr(obj, n, None)
-            if callable(fn):
-                return fn
-        return None
-
     def _validate_id(self, name: str, value: int) -> None:
         if not isinstance(value, int) or value < 0:
             raise ValueError(f"{name} invalide")
+
+    def _ensure_not_banned(self, stage: str, text: str) -> None:
+        if not self.banned_service or not text:
+            return
+        for name in ("contains_banned", "has_banned", "detect", "validate"):
+            fn = getattr(self.banned_service, name, None)
+            if callable(fn):
+                try:
+                    result = fn(text)
+                    if isinstance(result, bool) and result:
+                        raise ValueError(f"Contenu interdit détecté ({stage})")
+                    if isinstance(result, dict) and not result.get("ok", True):
+                        raise ValueError(f"Contenu interdit détecté ({stage}): {result.get('reason', '')}")
+                except ValueError:
+                    raise
+                except Exception:
+                    pass
+                return
+
+    def _http_chat(
+        self,
+        messages: List[Dict[str, str]],
+        *,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Appelle POST /chat/generate et renvoie un dict {content, usage}."""
+        url = f"{self.base_url}/chat/generate"
+        payload = {
+            "messages": messages,
+            "temperature": self.default_temperature if temperature is None else temperature,
+            "max_tokens": self.default_max_tokens if max_tokens is None else max_tokens,
+            "model": model or self.model,
+        }
+        # supprime les clés None
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        resp = self._session.post(url, json=payload, headers=headers, timeout=self.timeout)
+        resp.raise_for_status()
+        data = resp.json() or {}
+
+        content = data.get("content") or data.get("reply") or data.get("text") or ""
+        usage = data.get("usage") or {}
+        prompt_tokens = int(usage.get("prompt_tokens", 0)) if isinstance(usage, dict) else 0
+        completion_tokens = int(usage.get("completion_tokens", 0)) if isinstance(usage, dict) else 0
+        total_tokens = int(usage.get("total_tokens", prompt_tokens + completion_tokens))
+
+        return {
+            "content": str(content),
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+            },
+        }
 
     # ------------------------------------------------------------------
     # Public API
@@ -120,24 +191,19 @@ class LLMService:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
-        extra_messages: Optional[List[Dict[str, str]]] = None,
     ) -> str:
-        """Complétion directe (pas de persistance en base)."""
+        """Complétion directe (sans persistance en base)."""
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("prompt vide")
+
         sys_msg = system_prompt or self.default_system_prompt
-        msgs: List[Dict[str, str]] = [{"role": "system", "content": sys_msg}]
-        if extra_messages:
-            msgs.extend(extra_messages)
-        msgs.append({"role": "user", "content": prompt})
+        messages = [
+            {"role": "system", "content": sys_msg},
+            {"role": "user", "content": prompt},
+        ]
 
         self._ensure_not_banned("input", prompt)
-        out = self._provider_chat(
-            msgs,
-            temperature=temperature if temperature is not None else self.default_temperature,
-            max_tokens=max_tokens if max_tokens is not None else self.default_max_tokens,
-            model=model or self.model,
-        )
+        out = self._http_chat(messages, temperature=temperature, max_tokens=max_tokens, model=model)
         content = str(out.get("content", ""))
         self._ensure_not_banned("output", content)
         return content
@@ -151,61 +217,54 @@ class LLMService:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
-        include_last_n: Optional[int] = None,
         extra_context: Optional[str] = None,
     ) -> Message:
         """
-        Construit un contexte de conversation, appelle le LLM, puis persiste
-        la réponse comme message d'agent (is_from_agent=True).
-        Retourne l'objet Message créé.
+        Envoie l’historique COMPLET de la conversation à l’API,
+        reçoit la réponse du modèle et la persiste comme message de l’agent.
         """
         self._validate_id("conversation_id", conversation_id)
         self._validate_id("user_id", user_id)
 
-        # 1) Récupérer l'historique
-        get_msgs = self._get_callable(self.message_dao, "get_messages_by_conversation", "get_by_conversation")
-        if not get_msgs:
-            raise RuntimeError("MessageDAO ne fournit pas get_messages_by_conversation")
+        # 1) Récupérer l'historique complet
+        get_msgs = getattr(self.message_dao, "get_messages_by_conversation", None) or getattr(
+            self.message_dao, "get_by_conversation", None
+        )
+        if not callable(get_msgs):
+            raise RuntimeError("MessageDAO ne fournit pas get_messages_by_conversation/get_by_conversation")
+
         history: List[Message] = list(get_msgs(conversation_id))
         try:
             history.sort(key=lambda m: m.datetime)
         except Exception:
             pass
 
-        # 2) Construire le prompt
+        # 2) Construire le payload messages
         sys_msg = system_prompt or self.default_system_prompt
-        take_n = include_last_n if include_last_n is not None else self.max_history_messages
-        selected = history[-take_n:] if take_n > 0 else history
-        msgs: List[Dict[str, str]] = [{"role": "system", "content": sys_msg}]
+        messages: List[Dict[str, str]] = [{"role": "system", "content": sys_msg}]
 
-        for m in selected:
+        for m in history:
             role = "assistant" if bool(getattr(m, "is_from_agent", False)) else "user"
             content = str(getattr(m, "message", ""))
-            # Si on veut différencier chaque utilisateur, on peut préfixer (optionnel)
             if role == "user":
                 uid = int(getattr(m, "id_user", 0))
                 content = f"<user id={uid}>\n{content}"
-            msgs.append({"role": role, "content": content})
+            messages.append({"role": role, "content": content})
 
         if extra_context:
-            msgs.append({"role": "system", "content": f"Context:\n{extra_context}"})
+            messages.append({"role": "system", "content": f"Context:\n{extra_context}"})
 
-        # 3) Vérifier contenu interdit dans l'entrée
-        for m in msgs:
+        # 3) Filtrage contenu interdit (optionnel)
+        for m in messages:
             if m.get("role") in ("user", "system"):
                 self._ensure_not_banned("input", m.get("content", ""))
 
-        # 4) Appel provider
-        out = self._provider_chat(
-            msgs,
-            temperature=temperature if temperature is not None else self.default_temperature,
-            max_tokens=max_tokens if max_tokens is not None else self.default_max_tokens,
-            model=model or self.model,
-        )
+        # 4) Appel HTTP
+        out = self._http_chat(messages, temperature=temperature, max_tokens=max_tokens, model=model)
         content = str(out.get("content", ""))
         self._ensure_not_banned("output", content)
 
-        # 5) Persister comme message d'agent
+        # 5) Persister la réponse agent
         now = datetime.datetime.now()
         msg_obj = Message(
             id_message=None,
@@ -215,105 +274,8 @@ class LLMService:
             message=content,
             is_from_agent=True,
         )
-        create_fn = self._get_callable(self.message_dao, "create", "insert", "add")
-        if not create_fn:
-            raise RuntimeError("MessageDAO ne fournit pas de méthode create/insert/add")
+        create_fn = getattr(self.message_dao, "create", None) or getattr(self.message_dao, "insert", None)
+        if not callable(create_fn):
+            raise RuntimeError("MessageDAO ne fournit pas create/insert")
         created = create_fn(msg_obj)
         return created
-
-    def summarize_conversation(
-        self,
-        conversation_id: int,
-        *,
-        max_tokens: Optional[int] = None,
-        temperature: float = 0.2,
-        system_prompt: Optional[str] = None,
-        include_last_n: Optional[int] = None,
-        model: Optional[str] = None,
-        bullet_points: bool = True,
-    ) -> str:
-        """Produit un résumé de la conversation (en chaîne, pas de persistance)."""
-        self._validate_id("conversation_id", conversation_id)
-        get_msgs = self._get_callable(self.message_dao, "get_messages_by_conversation", "get_by_conversation")
-        if not get_msgs:
-            raise RuntimeError("MessageDAO ne fournit pas get_messages_by_conversation")
-        history: List[Message] = list(get_msgs(conversation_id))
-        try:
-            history.sort(key=lambda m: m.datetime)
-        except Exception:
-            pass
-        take_n = include_last_n if include_last_n is not None else self.max_history_messages
-        selected = history[-take_n:] if take_n > 0 else history
-
-        sys_msg = system_prompt or "Tu es un assistant qui résume brièvement et fidèlement les échanges."
-        style = "\n- Utilise des puces concises." if bullet_points else ""
-        user_prompt_lines = [
-            "Résume la conversation ci-dessous. Sois factuel, bref et couvre les points clés.",
-            style,
-            "\nConversation:\n",
-        ]
-        for m in selected:
-            role = "Agent" if bool(getattr(m, "is_from_agent", False)) else f"User#{int(getattr(m, 'id_user', 0))}"
-            dt = getattr(m, "datetime", None)
-            dt_s = dt.isoformat(sep=" ") if isinstance(dt, (datetime.datetime, datetime.date)) else "?"
-            content = str(getattr(m, "message", ""))
-            user_prompt_lines.append(f"[{dt_s}] {role}: {content}")
-        prompt = "\n".join([ln for ln in user_prompt_lines if ln])
-
-        self._ensure_not_banned("input", prompt)
-        out = self._provider_chat(
-            [{"role": "system", "content": sys_msg}, {"role": "user", "content": prompt}],
-            temperature=temperature,
-            max_tokens=max_tokens if max_tokens is not None else self.default_max_tokens,
-            model=model or self.model,
-        )
-        content = str(out.get("content", ""))
-        self._ensure_not_banned("output", content)
-        return content
-
-    # ------------------------------------------------------------------
-    # Utilities
-    # ------------------------------------------------------------------
-    def count_tokens(self, text: str) -> int:
-        if hasattr(self.provider, "count_tokens") and callable(getattr(self.provider, "count_tokens")):
-            try:
-                return int(self.provider.count_tokens(text))
-            except Exception:
-                pass
-        # Heuristique simple: ~ 1 token ≈ 4 chars (langue dépendante)
-        return max(1, (len(text) + 3) // 4)
-
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-    def _provider_chat(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
-        chat = getattr(self.provider, "chat", None)
-        if not callable(chat):
-            raise RuntimeError("Le provider LLM ne définit pas 'chat(messages, **kwargs)'.")
-        out = chat(messages, **{k: v for k, v in kwargs.items() if v is not None})
-        if not isinstance(out, dict) or "content" not in out:
-            raise RuntimeError("Réponse provider invalide: dict avec clé 'content' attendu")
-        return out
-
-    def _ensure_not_banned(self, stage: str, text: str) -> None:
-        if not self.banned_service or not text:
-            return
-        # On accepte différentes API via duck typing
-        for name in ("contains_banned", "has_banned", "detect", "validate"):
-            fn = getattr(self.banned_service, name, None)
-            if callable(fn):
-                try:
-                    result = fn(text)
-                    if isinstance(result, bool) and result:
-                        raise ValueError(f"Contenu interdit détecté ({stage})")
-                    # Autres variantes: {ok: bool, reason: str}
-                    if isinstance(result, dict) and not result.get("ok", True):
-                        raise ValueError(f"Contenu interdit détecté ({stage}): {result.get('reason', '')}")
-                except ValueError:
-                    raise
-                except Exception:
-                    # en cas d'erreur du service, on n'empêche pas l'appel mais on continue
-                    pass
-                return
-        # si le service ne fournit pas d'API reconnue → on ignore silencieusement
-        return
