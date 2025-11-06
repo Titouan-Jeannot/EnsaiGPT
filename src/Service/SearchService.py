@@ -3,13 +3,10 @@ from typing import List
 
 from src.DAO.CollaborationDAO import CollaborationDAO
 from src.DAO.ConversationDAO import ConversationDAO
-
-# Importez vos DAOs
 from src.DAO.MessageDAO import MessageDAO
 
-# Importez vos classes métiers
 from src.Objet_Metier.Message import Message
-from src.ObjetMetier.Collaboration import Collaboration  # Utile pour le type-hinting
+from src.ObjetMetier.Collaboration import Collaboration
 from src.ObjetMetier.Conversation import Conversation
 
 
@@ -29,32 +26,30 @@ class SearchService:
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.collaboration_dao = collaboration_dao
-        # Note: L'injection de dépendances est la bonne pratique ici.
 
     # ------------------------------------------------------------------ #
-    # Helper privé pour garantir la sécurité                               #
+    # Helper privé pour garantir la sécurité                             #
     # ------------------------------------------------------------------ #
 
     def _get_user_accessible_conversation_ids(self, user_id: int) -> List[int]:
         """
         Récupère les IDs des conversations auxquelles l'utilisateur a accès.
+        Autorise admin/writer/viewer/reader, exclut banned.
         """
-        # 1. Utilise la méthode existante dans CollaborationDAO
         collaborations: List[Collaboration] = self.collaboration_dao.find_by_user(user_id)
 
-        # 2. Filtre par rôle autorisé pour la recherche (ADMIN, WRITER, VIEWER)
-        allowed_roles = {"ADMIN", "WRITER", "VIEWER"}
+        # Inclure 'reader' pour coller aux tests SearchService
+        allowed_roles = {"ADMIN", "WRITER", "VIEWER", "READER"}
 
         conversation_ids = [
             c.id_conversation
             for c in collaborations
-            # On normalise en majuscule, même si le DAO renvoie en minuscule
-            if c.role.upper() in allowed_roles
+            if isinstance(c.role, str) and c.role.upper() in allowed_roles
         ]
         return conversation_ids
 
     # ------------------------------------------------------------------ #
-    # Recherche dans les MESSAGES (Utilise CollaborationDAO + MessageDAO)  #
+    # Recherche dans les MESSAGES (CollaborationDAO + MessageDAO)        #
     # ------------------------------------------------------------------ #
 
     def search_messages_by_keyword(self, user_id: int, keyword: str) -> List[Message]:
@@ -63,29 +58,22 @@ class SearchService:
         """
         if not keyword:
             return []
-
-        # 1. Obtenir les IDs autorisés
         conversation_ids = self._get_user_accessible_conversation_ids(user_id)
         if not conversation_ids:
             return []
-
-        # 2. Déléguer la recherche multi-conversation au MessageDAO
         return self.message_dao.search_by_keyword(keyword, conversation_ids)
 
     def search_messages_by_date(self, user_id: int, target_date: datetime) -> List[Message]:
         """
         Recherche des messages par date (journée entière), limités aux conversations de l'utilisateur.
         """
-        # 1. Obtenir les IDs autorisés
         conversation_ids = self._get_user_accessible_conversation_ids(user_id)
         if not conversation_ids:
             return []
-
-        # 2. Déléguer la recherche par date multi-conversation au MessageDAO
         return self.message_dao.search_by_date(target_date, conversation_ids)
 
     # ------------------------------------------------------------------ #
-    # Recherche dans les CONVERSATIONS (Utilise ConversationDAO)           #
+    # Recherche dans les CONVERSATIONS (ConversationDAO)                  #
     # ------------------------------------------------------------------ #
 
     def search_conversations_by_keyword(self, user_id: int, keyword: str) -> List[Conversation]:
@@ -94,8 +82,6 @@ class SearchService:
         """
         if not keyword:
             return []
-
-        # ConversationDAO gère directement la jointure avec les collaborations de l'utilisateur
         return self.conversation_dao.search_conversations_by_title(user_id, keyword)
 
     def search_conversations_by_date(
@@ -104,6 +90,4 @@ class SearchService:
         """
         Recherche des conversations par date de création (journée entière), limitées à celles de l'utilisateur.
         """
-        # ConversationDAO gère directement la jointure avec les collaborations de l'utilisateur
-        # et le filtre par date de création.
         return self.conversation_dao.get_conversations_by_date(user_id, target_date)
