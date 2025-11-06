@@ -1,208 +1,272 @@
-import unittest
-import importlib
-import traceback
-from unittest.mock import Mock
+# src/tests/test_service/test_LLMService_HTTP.py
+import json
 import datetime
-from typing import List
+import pytest
+from unittest.mock import MagicMock
 
-# -----------------------------
-# Import robuste de LLMService
-# -----------------------------
-LLMService = None
-import_error = None
-for module_name in ["Service.LLMService", "src.Service.LLMService"]:
-    try:
-        mod = importlib.import_module(module_name)
-        LLMService = getattr(mod, "LLMService", None)
-        if LLMService:
-            print(f"[INFO] Import réussi : {module_name}")
-            break
-    except Exception as e:
-        import_error = e
-        print(f"[ERREUR] Impossible d'importer {module_name} : {e}")
-        traceback.print_exc()
+try:
+    from ObjetMetier.Message import Message
+except Exception:
+    from src.ObjetMetier.Message import Message  # type: ignore
 
-if LLMService is None:  # pragma: no cover
-    raise ImportError(
-        f"Impossible d'importer LLMService depuis Service ou src.Service.\nDernière erreur : {import_error}"
+try:
+    from Service.LLMService import LLMService
+except Exception:
+    from src.Service.LLMService import LLMService  # type: ignore
+
+
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
+def make_msg(
+    id_conversation=1,
+    id_user=123,
+    text="hello",
+    is_from_agent=False,
+    dt=None,
+):
+    if dt is None:
+        dt = datetime.datetime(2025, 1, 1, 12, 0, 0)
+    return Message(
+        id_message=None,
+        id_conversation=id_conversation,
+        id_user=id_user,
+        datetime=dt,
+        message=text,
+        is_from_agent=is_from_agent,
     )
 
-# On tente d’importer la vraie classe Message pour la persistance
-Message = None
-for name in ["ObjetMetier.Message", "src.ObjetMetier.Message"]:
-    try:
-        Message = importlib.import_module(name).Message
-        break
-    except Exception:
-        continue
-if Message is None:
-    raise ImportError("La classe ObjetMetier.Message est requise par LLMService (constructeur).")
 
-_BASE = datetime.datetime(2025, 1, 1, 10, 0, 0)
+class FakeResponseOK:
+    def __init__(self, payload):
+        self._payload = payload
+        self.status_code = 200
 
+    def raise_for_status(self):
+        # 200 -> no error
+        return None
 
-class _HistMsg:
-    """Petit conteneur pour simuler des messages d'historique."""
-    def __init__(self, dt_min_offset: int, text: str, user_id: int, is_agent: bool = False):
-        self.datetime = _BASE + datetime.timedelta(minutes=dt_min_offset)
-        self.message = text
-        self.is_from_agent = is_agent
-        self.id_user = user_id
+    def json(self):
+        return self._payload
 
 
-class TestLLMService(unittest.TestCase):
-    def setUp(self):
-        # --- Mocks des dépendances ---
-        self.message_dao = Mock(name="MessageDAO")
-        self.provider = Mock(name="Provider")  # provider.chat(...)
-        self.conversation_dao = Mock(name="ConversationDAO")
-        self.user_dao = Mock(name="UserDAO")
-        self.banned_service = Mock(name="BannedService")
+class FakeResponseError:
+    def __init__(self, status_code=500, text="boom"):
+        self.status_code = status_code
+        self.text = text
 
-        # Historique de conversation: 3 messages (user, agent, user)
-        self.history: List[_HistMsg] = [
-            _HistMsg(0,  "Bonjour", user_id=1, is_agent=False),
-            _HistMsg(2,  "Bonjour, comment puis-je aider ?", user_id=0, is_agent=True),
-            _HistMsg(5,  "J'ai besoin d'un résumé.", user_id=1, is_agent=False),
-        ]
-        self.message_dao.get_messages_by_conversation.return_value = [
-            self.history[2], self.history[0], self.history[1]
-        ]
+    def raise_for_status(self):
+        # Simule requests.HTTPError
+        import requests
 
-        # Méthode create simulée
-        def _create(msg_obj):
-            msg_obj.id_message = 123
-            return msg_obj
-        self.message_dao.create.side_effect = _create
+        raise requests.HTTPError(f"{self.status_code} {self.text}")
 
-        # Réponse LLM simulée
-        self.provider.chat.return_value = {
-            "content": "Voici la réponse de l’agent.",
-            "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30},
-        }
-
-        # Par défaut, aucun contenu interdit
-        self.banned_service.contains_banned.return_value = False
-
-        self.svc = LLMService(
-            message_dao=self.message_dao,
-            provider=self.provider,
-            conversation_dao=self.conversation_dao,
-            user_dao=self.user_dao,
-            banned_service=self.banned_service,
-            default_system_prompt="You are a helpful assistant.",
-            max_history_messages=10,
-            default_temperature=0.7,
-            default_max_tokens=256,
-            model="test-model",
-        )
-
-    # ---------------- simple_complete ----------------
-    def test_simple_complete_ok(self):
-        out = self.svc.simple_complete("Dis bonjour en une phrase.")
-        self.assertEqual(out, "Voici la réponse de l’agent.")
-        args, kwargs = self.provider.chat.call_args
-        messages = args[0]
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[-1]["role"], "user")
-        self.assertIn("Dis bonjour", messages[-1]["content"])
-
-    def test_simple_complete_banned_input_raises(self):
-        self.banned_service.contains_banned.return_value = True
-        with self.assertRaises(ValueError):
-            self.svc.simple_complete("Contenu interdit !!!")
-
-    def test_simple_complete_banned_output_raises(self):
-        self.banned_service.contains_banned.side_effect = [False, True]
-        with self.assertRaises(ValueError):
-            self.svc.simple_complete("Texte OK côté entrée.")
-
-    # ---------------- generate_agent_reply ----------------
-    def test_generate_agent_reply_persists_agent_message(self):
-        result = self.svc.generate_agent_reply(conversation_id=10, user_id=1)
-        self.assertIsInstance(result, Message)
-        self.assertEqual(result.id_message, 123)
-        self.assertTrue(result.is_from_agent)
-        self.assertEqual(result.id_conversation, 10)
-        self.provider.chat.assert_called()
-        self.message_dao.create.assert_called_once()
-        created_obj = self.message_dao.create.call_args[0][0]
-        self.assertTrue(created_obj.is_from_agent)
-        self.assertEqual(created_obj.id_user, 0)
-
-    def test_generate_agent_reply_uses_last_n(self):
-        self.svc.max_history_messages = 2
-        _ = self.svc.generate_agent_reply(conversation_id=10, user_id=1)
-        messages = self.provider.chat.call_args[0][0]
-        roles = [m["role"] for m in messages]
-        self.assertEqual(roles.count("assistant"), 1)
-        self.assertEqual(roles.count("user"), 1)
-        self.assertEqual(messages[1]["role"], "assistant")
-        self.assertEqual(messages[2]["role"], "user")
-
-    def test_generate_agent_reply_banned_in_history_or_output(self):
-        # 3 inputs user/system + 1 output
-        self.banned_service.contains_banned.side_effect = [False, False, False, True]
-        with self.assertRaises(ValueError):
-            self.svc.generate_agent_reply(conversation_id=10, user_id=1)
-
-    def test_generate_agent_reply_missing_create_raises(self):
-        # Supprime toutes les méthodes de création
-        self.message_dao.create = None
-        self.message_dao.insert = None
-        self.message_dao.add = None
-        with self.assertRaises(RuntimeError):
-            self.svc.generate_agent_reply(conversation_id=10, user_id=1)
-
-    def test_generate_agent_reply_invalid_ids(self):
-        with self.assertRaises(ValueError):
-            self.svc.generate_agent_reply(conversation_id=-1, user_id=1)
-        with self.assertRaises(ValueError):
-            self.svc.generate_agent_reply(conversation_id=10, user_id=-2)
-
-    # ---------------- summarize_conversation ----------------
-    def test_summarize_conversation_ok(self):
-        self.provider.chat.return_value = {"content": "• Point 1\\n• Point 2", "usage": {}}
-        out = self.svc.summarize_conversation(conversation_id=10, bullet_points=True)
-        self.assertIn("Point 1", out)
-        args, kwargs = self.provider.chat.call_args
-        messages = args[0]
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[1]["role"], "user")
-        self.assertIn("Résume la conversation", messages[1]["content"])
-
-    def test_summarize_conversation_missing_list_method_raises(self):
-        self.message_dao.get_messages_by_conversation = None
-        self.message_dao.get_by_conversation = None
-        with self.assertRaises(RuntimeError):
-            self.svc.summarize_conversation(conversation_id=10)
-
-    # ---------------- count_tokens ----------------
-    def test_count_tokens_provider(self):
-        self.provider.count_tokens = Mock(return_value=123)
-        self.assertEqual(self.svc.count_tokens("abc"), 123)
-
-    def test_count_tokens_fallback(self):
-        if hasattr(self.provider, "count_tokens"):
-            delattr(self.provider, "count_tokens")
-        self.assertEqual(self.svc.count_tokens("12345678"), 2)
-
-    # ---------------- provider/chat errors ----------------
-    def test_provider_without_chat_raises(self):
-        delattr(self.provider, "chat")
-        with self.assertRaises(RuntimeError):
-            self.svc.simple_complete("Hello")
-
-    def test_provider_invalid_response_raises(self):
-        self.provider.chat.return_value = {"no_content": "oops"}
-        with self.assertRaises(RuntimeError):
-            self.svc.simple_complete("Hello")
+    def json(self):
+        return {"error": self.text}
 
 
-if __name__ == "__main__":  # pragma: no cover
-    unittest.main()
+# ---------------------------------------------------------------------
+# Tests simple_complete
+# ---------------------------------------------------------------------
+def test_simple_complete_happy_path():
+    # Mock session.post -> OK
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK(
+        {"content": "Bonjour!", "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}}
+    )
+
+    dao = MagicMock()  # pas utilisé par simple_complete
+    svc = LLMService(
+        dao,
+        requests_session=session,
+        base_url="https://ensai-gpt-109912438483.europe-west4.run.app",
+        default_system_prompt="You are helpful.",
+    )
+
+    out = svc.simple_complete("Salut ?")
+    assert out == "Bonjour!"
+
+    # Vérifie le JSON envoyé
+    args, kwargs = session.post.call_args
+    assert args[0].endswith("/chat/generate")
+    body = kwargs["json"]
+    assert body["messages"][0] == {"role": "system", "content": "You are helpful."}
+    assert body["messages"][1] == {"role": "user", "content": "Salut ?"}
+    assert body["temperature"] == svc.default_temperature
+    assert body["max_tokens"] == svc.default_max_tokens
+    # pas de model si None
+    assert "model" not in body
 
 
-# pour tester, utiliser:
-# pytest -q --confcutdir=src/tests/test_Service src/tests/test_Service/test_LLMService.py
+def test_simple_complete_with_api_key_header():
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK({"content": "ok"})
+
+    dao = MagicMock()
+    svc = LLMService(
+        dao,
+        requests_session=session,
+        base_url="https://ensai-gpt-109912438483.europe-west4.run.app",
+        api_key="SECRET123",
+    )
+    _ = svc.simple_complete("Ping")
+
+    _, kwargs = session.post.call_args
+    headers = kwargs["headers"]
+    assert headers.get("Authorization") == "Bearer SECRET123"
+    assert headers.get("Content-Type") == "application/json"
+
+
+def test_simple_complete_banned_input_raises():
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK({"content": "ne devrait pas être appelé"})
+
+    banned = MagicMock()
+    banned.contains_banned.return_value = True  # déclenche l'erreur
+
+    dao = MagicMock()
+    svc = LLMService(dao, requests_session=session, banned_service=banned)
+
+    with pytest.raises(ValueError):
+        svc.simple_complete("Texte interdit")
+
+    # L'appel HTTP ne doit PAS être fait
+    session.post.assert_not_called()
+
+
+def test_simple_complete_http_error_propagates():
+    session = MagicMock()
+    session.post.return_value = FakeResponseError(502, "Bad Gateway")
+
+    dao = MagicMock()
+    svc = LLMService(dao, requests_session=session)
+
+    import requests
+
+    with pytest.raises(requests.HTTPError):
+        svc.simple_complete("Hello")
+
+
+# ---------------------------------------------------------------------
+# Tests generate_agent_reply
+# ---------------------------------------------------------------------
+def test_generate_agent_reply_sends_full_history_and_persists():
+    # Historique : user -> agent -> user
+    history = [
+        make_msg(text="Salut", id_user=11, is_from_agent=False, dt=datetime.datetime(2025, 1, 1, 10, 0, 0)),
+        make_msg(text="Bonjour, comment puis-je vous aider ?", id_user=0, is_from_agent=True, dt=datetime.datetime(2025, 1, 1, 10, 0, 1)),
+        make_msg(text="J'ai un souci.", id_user=11, is_from_agent=False, dt=datetime.datetime(2025, 1, 1, 10, 1, 0)),
+    ]
+
+    # DAO
+    dao = MagicMock()
+    dao.get_messages_by_conversation.return_value = history
+
+    # Session -> réponse modèle
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK(
+        {"content": "Voici la solution.", "usage": {"prompt_tokens": 42, "completion_tokens": 10, "total_tokens": 52}}
+    )
+
+    # create() renvoie l'objet persisted (on peut renvoyer ce qu'on veut)
+    def fake_create(msg_obj):
+        # Simule que la DB assigne un id_message
+        msg_obj.id_message = 999
+        return msg_obj
+
+    dao.create.side_effect = fake_create
+
+    svc = LLMService(
+        dao,
+        requests_session=session,
+        default_system_prompt="System prompt ici.",
+    )
+
+    created = svc.generate_agent_reply(conversation_id=1, user_id=11)
+
+    # Vérifie persistance
+    assert created.is_from_agent is True
+    assert created.message == "Voici la solution."
+    assert created.id_message == 999
+    dao.create.assert_called_once()
+
+    # Vérifie le payload envoyé à l'API
+    args, kwargs = session.post.call_args
+    assert args[0].endswith("/chat/generate")
+    body = kwargs["json"]
+    msgs = body["messages"]
+    assert msgs[0] == {"role": "system", "content": "System prompt ici."}
+    # mapping des rôles + préfixe <user id=...>
+    assert msgs[1] == {"role": "user", "content": "<user id=11>\nSalut"}
+    assert msgs[2] == {"role": "assistant", "content": "Bonjour, comment puis-je vous aider ?"}
+    assert msgs[3] == {"role": "user", "content": "<user id=11>\nJ'ai un souci."}
+
+
+def test_generate_agent_reply_with_extra_context():
+    dao = MagicMock()
+    dao.get_messages_by_conversation.return_value = [make_msg(text="Aide moi", id_user=10)]
+
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK({"content": "OK"})
+
+    svc = LLMService(dao, requests_session=session)
+
+    _ = svc.generate_agent_reply(1, 10, extra_context="Infos supplémentaires")
+
+    _, kwargs = session.post.call_args
+    msgs = kwargs["json"]["messages"]
+    # Le dernier message system doit contenir le contexte
+    assert msgs[-1]["role"] == "system"
+    assert "Infos supplémentaires" in msgs[-1]["content"]
+
+
+def test_generate_agent_reply_missing_dao_method_raises():
+    dao = MagicMock()
+    # ni get_messages_by_conversation ni get_by_conversation
+    dao.get_messages_by_conversation = None
+    dao.get_by_conversation = None
+
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK({"content": "x"})
+
+    svc = LLMService(dao, requests_session=session)
+    with pytest.raises(RuntimeError):
+        svc.generate_agent_reply(1, 2)
+
+
+def test_generate_agent_reply_banned_output_raises_and_no_persist():
+    # Historique minimal
+    dao = MagicMock()
+    dao.get_messages_by_conversation.return_value = [make_msg(text="Hi", id_user=9)]
+
+    # L'API répond du contenu "interdit"
+    session = MagicMock()
+    session.post.return_value = FakeResponseOK({"content": ">>>BANNED<<<"})
+
+    banned = MagicMock()
+    # Autorise input, bloque output
+    banned.contains_banned.side_effect = [False, True]
+
+    svc = LLMService(dao, requests_session=session, banned_service=banned)
+
+    with pytest.raises(ValueError):
+        svc.generate_agent_reply(1, 9)
+
+    # Rien ne doit être créé en base si contenu interdit
+    dao.create.assert_not_called()
+
+
+def test_generate_agent_reply_http_error_propagates():
+    dao = MagicMock()
+    dao.get_messages_by_conversation.return_value = [make_msg(text="hello", id_user=1)]
+
+    session = MagicMock()
+    session.post.return_value = FakeResponseError(503, "Service Unavailable")
+
+    svc = LLMService(dao, requests_session=session)
+
+    import requests
+
+    with pytest.raises(requests.HTTPError):
+        svc.generate_agent_reply(1, 1)
 
