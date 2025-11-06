@@ -20,6 +20,9 @@ from src.DAO.UserDAO import UserDAO
 
 from src.ObjetMetier.Feedback import Feedback
 
+from src.Service.LLMService import LLMService
+
+
 
 class BackCommand(Exception):
     """Commande /back pour revenir en arriere."""
@@ -72,6 +75,14 @@ conv_service = ConversationService(
 search_service = SearchService(message_dao, conversation_dao, collab_dao)
 print(feedback_dao)
 feedback_service = FeedbackService(feedback_dao)
+
+llm_service = LLMService(
+    message_dao=message_dao,
+    conversation_dao=conversation_dao,
+    user_dao=user_dao,
+    # base_url et api_key peuvent venir des env: LLM_API_BASE_URL / LLM_API_KEY
+)
+
 
 
 def safe_input(prompt: str) -> str:
@@ -692,6 +703,34 @@ def send_user_message(conv_id: int) -> None:
         content = ask_nonempty("Votre message")
     except BackCommand:
         return
+
+    try:
+        # message utilisateur
+        user_msg = msg_service.send_message(conv_id, session.current_user_id, content)
+    except Exception as exc:
+        print(f"Echec d'envoi: {exc}")
+        return
+
+    # réponse LLM
+    try:
+        llm_service.generate_agent_reply(
+            conversation_id=conv_id,
+            user_id=session.current_user_id,
+            # tu peux passer system_prompt=conversation.setting_conversation si tu l’as
+            # temperature=..., max_tokens=..., model=... si besoin
+        )
+    except Exception as e:
+        # fallback : message agent minimal si l’appel HTTP fail
+        msg_service.send_agent_message(conv_id, f"[LLM indisponible] {e}")
+    print("Message envoye.")
+
+
+
+    """
+    try:
+        content = ask_nonempty("Votre message")
+    except BackCommand:
+        return
     try:
         msg_service.send_message(conv_id, session.current_user_id, content)
         agent_fn = getattr(msg_service, "add_agent_message", None)
@@ -705,7 +744,7 @@ def send_user_message(conv_id: int) -> None:
         print(f"Echec d'envoi: {exc}")
         return
     print("Message envoye.")
-
+    """
 
 def add_feedback_flow(conv_id: int, messages: List) -> None:
     agent_messages = [msg for msg in messages if getattr(msg, "is_from_agent", False)]
