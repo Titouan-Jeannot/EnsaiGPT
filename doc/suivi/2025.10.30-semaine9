@@ -1,8 +1,0 @@
-## Anne-Lise Dodero
-- code de FeedbackDAO (à finir)
-- test FeedbackDao (à voir is nécessaire)
-- code CollaborationDAO (à revoir mais normalement c'est bon )
-- test CollaborationDao (voir mais finalement pas necessaire)
-- régalge d'un problème de test dans feedback (feedback equality)
-- coder FeedbackService
-- coder CollaboraitonService
