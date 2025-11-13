@@ -2,8 +2,8 @@
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timezone
 import os
-from config import AGENT_USER_ID
-
+# from config import AGENT_USER_ID
+AGENT_USER_ID = 6  # Valeur importée de config.py
 """
 LLMService (version intégrée)
 -----------------------------
@@ -73,7 +73,7 @@ class LLMService:
         conversation_dao: Optional[ConversationDAO] = None,
         user_dao: Optional[UserDAO] = None,
         banned_service: Optional[Any] = None,
-        default_system_prompt: str = "Tu es un assiastant IA utile.",
+        default_system_prompt: str = "Tu es un assiastant IA utile.", # assistant
         default_temperature: float = 0.7,
         default_max_tokens: int = 512,
         model: Optional[str] = None,
@@ -147,61 +147,128 @@ class LLMService:
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Appelle POST /generate et renvoie un dict {content, usage}."""
-        url = f"{self.base_url}/generate"
+        """
+        Appelle POST /generate et renvoie un dict {content, usage} dans un format unifié.
 
-        payload = {
-        "history": messages,  # <-- clé attendue
-        "temperature": self.default_temperature if temperature is None else temperature,
-        "max_tokens": self.default_max_tokens if max_tokens is None else max_tokens,
-        "top_p": 1,  # <-- la doc montre top_p; mets une valeur explicite
+        On se cale sur l'API ENSAI-GPT qui attend :
+          - history: liste de {role, content}
+          - éventuellement temperature, max_tokens, model
+        """
+        import requests  # s'assurer que le nom existe bien dans cette portée
+
+        url = f"{self.base_url}/generate"
+        print(f"_http_chat Appel à l'API LLM: {url}")
+
+        # ⚠️ Payload minimal pour éviter les 422 (on ajoute les champs seulement si besoin)
+        payload: Dict[str, Any] = {
+            "history": messages,
         }
-        # Ne pas envoyer 'model' si l’API ne l’attend pas; sinon:
-        if (model or self.model) is not None:
+        if temperature is not None:
+            payload["temperature"] = temperature
+        else:
+            payload["temperature"] = self.default_temperature
+
+        if max_tokens is not None:
+            # si l'API utilise max_tokens
+            payload["max_tokens"] = max_tokens
+        else:
+            payload["max_tokens"] = self.default_max_tokens
+
+        # Si l'API n'aime pas les champs inconnus, tu peux commenter ou supprimer ça
+        # payload["top_p"] = 1
+
+        if model or self.model:
             payload["model"] = model or self.model
 
-        # supprime les clés None
-        #payload = {k: v for k, v in payload.items() if v is not None}
-
         headers = {
-        "accept": "application/json",
-        "Content-Type": "application/json",
+            "accept": "application/json",
+            "Content-Type": "application/json",
         }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        resp = self._session.post(url, json=payload, headers=headers, timeout=self.timeout)
+        try:
+            resp = self._session.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
+            )
+        except requests.exceptions.Timeout as e:
+            # timeout réseau → à toi ensuite de remonter un message propre côté CLI
+            raise RuntimeError(f"Timeout ({self.timeout}s) sur {url}") from e
+        except requests.exceptions.RequestException as e:
+            # autre erreur réseau (DNS, connexion, etc.)
+            raise RuntimeError(f"Erreur réseau lors de l'appel à {url}: {e}") from e
 
-
-        # resp.raise_for_status()
-
+        # erreur HTTP (4xx / 5xx) avec message détaillé
         try:
             resp.raise_for_status()
         except requests.HTTPError as e:
-            body = ""
-            try:
-                body = resp.text
-            except Exception:
-                pass
-            raise RuntimeError(f"HTTP {resp.status_code} at {url} – {body[:800]}") from e
+            # on récupère le texte renvoyé par l'API pour debug
+            text = resp.text
+            raise RuntimeError(
+                f"HTTP {resp.status_code} sur {url} – corps de réponse: {text[:800]}"
+            ) from e
 
+        # -------------------------
+        # Normalisation de la réponse
+        # -------------------------
+        try:
+            data = resp.json() or {}
+        except ValueError as e:
+            raise RuntimeError(f"Réponse non-JSON depuis {url}: {resp.text[:800]}") from e
 
-        data = resp.json() or {}
+        print(f"_http_chat Données brutes: {data}")
 
-        content = data.get("content") or data.get("reply") or data.get("text") or ""
-        usage = data.get("usage") or {}
-        prompt_tokens = int(usage.get("prompt_tokens", 0)) if isinstance(usage, dict) else 0
-        completion_tokens = int(usage.get("completion_tokens", 0)) if isinstance(usage, dict) else 0
-        total_tokens = int(usage.get("total_tokens", prompt_tokens + completion_tokens))
+        # Plusieurs formats possibles, on essaie dans l'ordre
+        content = ""
+
+        # 1) style "simple"
+        if isinstance(data, dict) and "content" in data:
+            content = str(data.get("content", ""))
+
+        # 2) style "message": {"message": {"role": "...", "content": "..."}}
+        elif "message" in data and isinstance(data["message"], dict):
+            content = str(data["message"].get("content", ""))
+
+        # 3) style "choices" type OpenAI
+        elif "choices" in data and data["choices"]:
+            first = data["choices"][0]
+            if isinstance(first, dict):
+                # OpenAI-style: {"message":{"role":...,"content":...}}
+                if "message" in first and isinstance(first["message"], dict):
+                    content = str(first["message"].get("content", ""))
+                # ou plus simple: {"text": "..."}
+                elif "text" in first:
+                    content = str(first.get("text", ""))
+
+        # si on n'a toujours rien
+        if not content:
+            raise RuntimeError(
+                f"Impossible de trouver le contenu généré dans la réponse: {data}"
+            )
+
+        # usage token, si fourni
+        usage_raw = data.get("usage", {}) if isinstance(data, dict) else {}
+        usage: Dict[str, int] = {}
+        if isinstance(usage_raw, dict):
+            # on supporte plusieurs conventions possibles
+            prompt_tokens = usage_raw.get("prompt_tokens") or usage_raw.get("input_tokens") or 0
+            completion_tokens = usage_raw.get("completion_tokens") or usage_raw.get("output_tokens") or 0
+            total_tokens = usage_raw.get("total_tokens") or (prompt_tokens + completion_tokens)
+
+            usage = {
+                "prompt_tokens": int(prompt_tokens),
+                "completion_tokens": int(completion_tokens),
+                "total_tokens": int(total_tokens),
+            }
 
         return {
-            "content": str(content),
-            "usage": {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-            },
+            "content": content,
+            "usage": usage,
         }
+
 
     # ------------------------------------------------------------------
     # Public API
@@ -231,6 +298,7 @@ class LLMService:
         self._ensure_not_banned("output", content)
         return content
 
+
     def generate_agent_reply(
         self,
         conversation_id: int,
@@ -253,18 +321,23 @@ class LLMService:
         get_msgs = getattr(self.message_dao, "get_messages_by_conversation", None) or getattr(
             self.message_dao, "get_by_conversation", None
         )
+        print(get_msgs) # Debug: afficher la fonction récupérée
         if not callable(get_msgs):
             raise RuntimeError("MessageDAO ne fournit pas get_messages_by_conversation/get_by_conversation")
 
         history: List[Message] = list(get_msgs(conversation_id))
+        print(f"Historique récupéré: {len(history)} messages")  # Debug: afficher le nombre de messages
         try:
             history.sort(key=lambda m: m.datetime)
+            print("Historique trié par date")  # Debug: confirmer le tri
         except Exception:
             pass
 
         # 2) Construire le payload messages
         sys_msg = system_prompt or self.default_system_prompt
+        print(f"System prompt utilisé: {sys_msg}")  # Debug: afficher le system prompt
         messages: List[Dict[str, str]] = [{"role": "system", "content": sys_msg}]
+        print(f"Ajout de {len(history)} messages à l'historique")  # Debug: afficher le nombre de messages ajoutés
 
         for m in history:
             role = "assistant" if bool(getattr(m, "is_from_agent", False)) else "user"
@@ -283,8 +356,12 @@ class LLMService:
                 self._ensure_not_banned("input", m.get("content", ""))
 
         # 4) Appel HTTP
+        print("Envoi de la requête à l'API LLM...")  # Debug: avant l'appel
         out = self._http_chat(messages, temperature=temperature, max_tokens=max_tokens, model=model)
+        print("Réponse reçue de l'API LLM")  # Debug: confirmer la réception
+        print(out)
         content = str(out.get("content", ""))
+        print(f"Contenu reçu: {content[:100]}...")  # Debug: afficher un extrait du contenu
         self._ensure_not_banned("output", content)
 
         # 5) Persister la réponse agent
@@ -298,6 +375,7 @@ class LLMService:
             is_from_agent=True,
         )
         create_fn = getattr(self.message_dao, "create", None) or getattr(self.message_dao, "insert", None)
+        print(create_fn)  # Debug: afficher la fonction récupérée
         if not callable(create_fn):
             raise RuntimeError("MessageDAO ne fournit pas create/insert")
         created = create_fn(msg_obj)
