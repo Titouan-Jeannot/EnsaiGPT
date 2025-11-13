@@ -1,7 +1,8 @@
 # src/Service/LLMService.py
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
-import datetime
+from datetime import datetime, timezone
 import os
+from config import AGENT_USER_ID
 
 """
 LLMService (version intégrée)
@@ -146,23 +147,45 @@ class LLMService:
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Appelle POST /chat/generate et renvoie un dict {content, usage}."""
-        url = f"{self.base_url}/chat/generate"
-        payload = {
-            "messages": messages,
-            "temperature": self.default_temperature if temperature is None else temperature,
-            "max_tokens": self.default_max_tokens if max_tokens is None else max_tokens,
-            "model": model or self.model,
-        }
-        # supprime les clés None
-        payload = {k: v for k, v in payload.items() if v is not None}
+        """Appelle POST /generate et renvoie un dict {content, usage}."""
+        url = f"{self.base_url}/generate"
 
-        headers = {"Content-Type": "application/json"}
+        payload = {
+        "history": messages,  # <-- clé attendue
+        "temperature": self.default_temperature if temperature is None else temperature,
+        "max_tokens": self.default_max_tokens if max_tokens is None else max_tokens,
+        "top_p": 1,  # <-- la doc montre top_p; mets une valeur explicite
+        }
+        # Ne pas envoyer 'model' si l’API ne l’attend pas; sinon:
+        if (model or self.model) is not None:
+            payload["model"] = model or self.model
+
+        # supprime les clés None
+        #payload = {k: v for k, v in payload.items() if v is not None}
+
+        headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+        }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         resp = self._session.post(url, json=payload, headers=headers, timeout=self.timeout)
-        resp.raise_for_status()
+
+
+        # resp.raise_for_status()
+
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as e:
+            body = ""
+            try:
+                body = resp.text
+            except Exception:
+                pass
+            raise RuntimeError(f"HTTP {resp.status_code} at {url} – {body[:800]}") from e
+
+
         data = resp.json() or {}
 
         content = data.get("content") or data.get("reply") or data.get("text") or ""
@@ -265,11 +288,11 @@ class LLMService:
         self._ensure_not_banned("output", content)
 
         # 5) Persister la réponse agent
-        now = datetime.datetime.now()
+        now = datetime.now(timezone.utc)
         msg_obj = Message(
             id_message=None,
             id_conversation=conversation_id,
-            id_user=0,  # 0 = agent
+            id_user=AGENT_USER_ID,  # Utiliser l'ID de l'agent
             datetime=now,
             message=content,
             is_from_agent=True,

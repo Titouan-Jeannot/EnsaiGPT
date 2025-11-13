@@ -300,7 +300,7 @@ def page_login() -> None:
         print(f"Erreur interne lors de la connexion : {e}")  # ou log + msg générique
         return
 
-    user = authenticate_credentials(mail, password)
+    # user = authenticate_credentials(mail, password)
     print("Debug apres auth:")
     print(user) # ajustement : user est None ici
 
