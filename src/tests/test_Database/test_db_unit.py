@@ -11,7 +11,7 @@ import pytest
 
 def _reload_settings_with(monkeypatch, **env):
     """
-    Recharge src.Database.settings avec un environnement contrôlé.
+    Recharge Database.settings avec un environnement contrôlé.
     Attention : settings.py fait load_dotenv() à l'import,
     donc certains tests patchent load_dotenv en no-op.
     """
@@ -22,7 +22,7 @@ def _reload_settings_with(monkeypatch, **env):
             monkeypatch.delenv(k, raising=False)
         else:
             monkeypatch.setenv(k, v)
-    import src.Database.settings as settings
+    import Database.settings as settings
     importlib.reload(settings)
     return settings
 
@@ -73,7 +73,7 @@ def test_settings_raises_if_database_url_missing(monkeypatch):
     on force DATABASE_URL à "" (falsy) pour un comportement déterministe.
     """
     import importlib
-    import src.Database.settings as settings
+    import Database.settings as settings
     from unittest.mock import patch
 
     # Empêche load_dotenv de toucher l'env pendant le reload
@@ -92,7 +92,7 @@ def test_settings_raises_if_database_url_missing(monkeypatch):
 # ======================================================
 
 def test_init_db_executes_schema_then_commit(monkeypatch):
-    import src.Database.init_db as initdb
+    import Database.init_db as initdb
 
     fake_cur = MagicMock()
     fake_conn_ctx = MagicMock()
@@ -100,7 +100,7 @@ def test_init_db_executes_schema_then_commit(monkeypatch):
     fake_conn_ctx.__exit__.return_value = False
     fake_conn_ctx.cursor.return_value.__enter__.return_value = fake_cur
 
-    with patch("src.Database.init_db.psycopg2.connect", return_value=fake_conn_ctx):
+    with patch("Database.init_db.psycopg2.connect", return_value=fake_conn_ctx):
         initdb.init_db_for_url("postgres://dsn")
 
     fake_cur.execute.assert_called_once()        # SCHEMA_SQL exécuté
@@ -109,7 +109,7 @@ def test_init_db_executes_schema_then_commit(monkeypatch):
 
 
 def test_init_db_rolls_back_on_error(monkeypatch):
-    import src.Database.init_db as initdb
+    import Database.init_db as initdb
 
     fake_cur = MagicMock()
     fake_cur.execute.side_effect = RuntimeError("sql error")
@@ -119,7 +119,7 @@ def test_init_db_rolls_back_on_error(monkeypatch):
     fake_conn_ctx.__exit__.return_value = False
     fake_conn_ctx.cursor.return_value.__enter__.return_value = fake_cur
 
-    with patch("src.Database.init_db.psycopg2.connect", return_value=fake_conn_ctx):
+    with patch("Database.init_db.psycopg2.connect", return_value=fake_conn_ctx):
         initdb.init_db_for_url("postgres://dsn")
 
     fake_conn_ctx.rollback.assert_called_once()
@@ -131,7 +131,7 @@ def test_init_db_rolls_back_on_error(monkeypatch):
 # ======================================================
 
 def test_manage_test_db_ensure_exists_branches(monkeypatch):
-    import src.Database.manage_test_db as mdb
+    import Database.manage_test_db as mdb
 
     with patch.object(mdb, "DATABASE_URL", "postgres://u:p@h:5432/postgres"), \
          patch.object(mdb, "DATABASE_URL_TEST", "postgres://u:p@h:5432/test_db"), \
@@ -162,7 +162,7 @@ def test_manage_test_db_ensure_exists_branches(monkeypatch):
 
 
 def test_manage_test_db_drop_terminates_then_drop(monkeypatch):
-    import src.Database.manage_test_db as mdb
+    import Database.manage_test_db as mdb
 
     with patch.object(mdb, "DATABASE_URL", "postgres://u:p@h:5432/postgres"), \
          patch.object(mdb, "DATABASE_URL_TEST", "postgres://u:p@h:5432/test_db"), \
@@ -187,7 +187,7 @@ def test_manage_test_db_drop_terminates_then_drop(monkeypatch):
 
 
 def test_manage_test_db_init_calls_initdb(monkeypatch):
-    import src.Database.manage_test_db as mdb
+    import Database.manage_test_db as mdb
     with patch.object(mdb, "init_db_for_url") as mock_init, \
          patch.object(mdb, "DATABASE_URL_TEST", "postgres://u:p@h:5432/test_db"):
         mdb.init_test_db()

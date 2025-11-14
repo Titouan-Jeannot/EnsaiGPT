@@ -1,7 +1,7 @@
 # src/cli/pages/home.py
 
-from src.cli.ui import ask_int, BackCommand, QuitCommand, session
-from src.cli.pages import auth  # import non-circulaire car auth n'importe pas home
+from cli.ui import ask_int, BackCommand, QuitCommand, session
+from cli.pages import auth  # import non-circulaire car auth n'importe pas home
 
 
 def page_home() -> None:

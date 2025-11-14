@@ -16,10 +16,10 @@ if str(PROJECT_SRC) not in sys.path:
 
 OBJET_METIER = importlib.import_module("ObjetMetier")
 sys.modules.setdefault("ObjetMetier", OBJET_METIER)
-sys.modules.setdefault("src.ObjetMetier", OBJET_METIER)
+sys.modules.setdefault("ObjetMetier", OBJET_METIER)
 
 UTILS_MODULE = importlib.import_module("Utils")
-sys.modules.setdefault("src.Utils", UTILS_MODULE)
+sys.modules.setdefault("Utils", UTILS_MODULE)
 
 
 class _DummyCursor:
@@ -69,8 +69,8 @@ class _DummyPool:
 
 psycopg2.pool.SimpleConnectionPool = _DummyPool
 
-from src.ObjetMetier.Conversation import Conversation
-from src.Service.ConversationService import ConversationService
+from ObjetMetier.Conversation import Conversation
+from Service.ConversationService import ConversationService
 
 
 class FakeConversationDAO:
@@ -176,7 +176,7 @@ def dao():
 def fixed_tokens(monkeypatch):
     tokens = iter(["view-token", "write-token"])
     monkeypatch.setattr(
-        "src.Service.ConversationService.secrets.token_urlsafe",
+        "Service.ConversationService.secrets.token_urlsafe",
         lambda _: next(tokens),
     )
 
@@ -190,7 +190,7 @@ def fixed_datetime(monkeypatch):
         def now():
             return fixed
 
-    monkeypatch.setattr("src.Service.ConversationService.datetime", _FixedDateTime)
+    monkeypatch.setattr("Service.ConversationService.datetime", _FixedDateTime)
     return fixed
 
 

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List
 
-from src.cli.ui import (
+from cli.ui import (
     ask_int,
     ask_nonempty,
     ask_date,
@@ -14,7 +14,7 @@ from src.cli.ui import (
     session,
     ask_optional,
 )
-from src.cli.context import conv_service, search_service
+from cli.context import conv_service, search_service
 
 
 def page_manage() -> None:
@@ -124,7 +124,7 @@ def open_conversation_from_list(conversations: List) -> None:
     except BackCommand:
         return
     if conv_id in ids:
-        from src.cli.pages import conversation_detail
+        from cli.pages import conversation_detail
         conversation_detail.page_conversation(conv_id)
 
 
@@ -147,5 +147,5 @@ def create_conversation() -> None:
         print(f"Echec de creation: {exc}")
         return
     print(f"Conversation creee (id={conversation.id_conversation}).")
-    from src.cli.pages import conversation_detail
+    from cli.pages import conversation_detail
     conversation_detail.page_conversation(conversation.id_conversation)

@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import List
 
-from src.DAO.CollaborationDAO import CollaborationDAO
-from src.DAO.ConversationDAO import ConversationDAO
-from src.DAO.MessageDAO import MessageDAO
+from DAO.CollaborationDAO import CollaborationDAO
+from DAO.ConversationDAO import ConversationDAO
+from DAO.MessageDAO import MessageDAO
 
-from src.ObjetMetier.Message import Message
-from src.ObjetMetier.Collaboration import Collaboration
-from src.ObjetMetier.Conversation import Conversation
+from ObjetMetier.Message import Message
+from ObjetMetier.Collaboration import Collaboration
+from ObjetMetier.Conversation import Conversation
 
 
 class SearchService:

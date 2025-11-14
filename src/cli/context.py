@@ -1,20 +1,20 @@
 # src/cli/context.py
 from __future__ import annotations
 
-from src.Service.UserService import UserService
-from src.Service.AuthService import AuthService
-from src.Service.ConversationService import ConversationService
-from src.Service.MessageService import MessageService
-from src.Service.SearchService import SearchService
-from src.Service.CollaborationService import CollaborationService
-from src.Service.FeedbackService import FeedbackService
-from src.Service.LLMService import LLMService
+from Service.UserService import UserService
+from Service.AuthService import AuthService
+from Service.ConversationService import ConversationService
+from Service.MessageService import MessageService
+from Service.SearchService import SearchService
+from Service.CollaborationService import CollaborationService
+from Service.FeedbackService import FeedbackService
+from Service.LLMService import LLMService
 
-from src.DAO.FeedbackDAO import FeedbackDAO
-from src.DAO.CollaborationDAO import CollaborationDAO
-from src.DAO.ConversationDAO import ConversationDAO
-from src.DAO.MessageDAO import MessageDAO
-from src.DAO.UserDAO import UserDAO
+from DAO.FeedbackDAO import FeedbackDAO
+from DAO.CollaborationDAO import CollaborationDAO
+from DAO.ConversationDAO import ConversationDAO
+from DAO.MessageDAO import MessageDAO
+from DAO.UserDAO import UserDAO
 
 # DAO
 user_dao = UserDAO()

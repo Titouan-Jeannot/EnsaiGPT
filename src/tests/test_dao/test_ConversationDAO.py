@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import re
 import pytest
 
-from src.DAO.ConversationDAO import ConversationDAO
-from src.ObjetMetier.Conversation import Conversation
+from DAO.ConversationDAO import ConversationDAO
+from ObjetMetier.Conversation import Conversation
 
 
 def make_mock_db():
@@ -21,7 +21,7 @@ def make_mock_db():
 
 
 class TestConversationDAOUnit:
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_create_generates_tokens_and_returns_row(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         # Le DAO attend un dict avec ces clés au RETURNING
@@ -62,7 +62,7 @@ class TestConversationDAOUnit:
 
         mock_conn.commit.assert_called_once()
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_create_raises_on_exception(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.execute.side_effect = Exception("DB error")
@@ -74,7 +74,7 @@ class TestConversationDAOUnit:
         with pytest.raises(Exception):
             dao.create(conv)
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_read_success(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = {
@@ -101,7 +101,7 @@ class TestConversationDAOUnit:
         assert "where id_conversation = %(id_conversation)s" in sql.lower()
         assert params["id_conversation"] == 7
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_read_none_when_absent(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = None
@@ -110,7 +110,7 @@ class TestConversationDAOUnit:
         dao = ConversationDAO()
         assert dao.read(999) is None
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_update_title_success(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.rowcount = 1
@@ -126,7 +126,7 @@ class TestConversationDAOUnit:
         assert params["id_conversation"] == 5
         assert params["titre"] == "Nouveau titre"
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_set_active_success(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.rowcount = 1
@@ -137,7 +137,7 @@ class TestConversationDAOUnit:
         assert ok is True
         mock_conn.commit.assert_called_once()
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_delete_success(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.rowcount = 1
@@ -148,7 +148,7 @@ class TestConversationDAOUnit:
         assert ok is True
         mock_conn.commit.assert_called_once()
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_get_conversations_by_user(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchall.return_value = [
@@ -182,7 +182,7 @@ class TestConversationDAOUnit:
         assert "join collaboration" in sql.lower()
         assert params["user_id"] == 123
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_search_conversations_by_title(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchall.return_value = [
@@ -208,7 +208,7 @@ class TestConversationDAOUnit:
         assert params["user_id"] == 321
         assert params["title"] == "%magique%"
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_get_conversations_by_date(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchall.return_value = [
@@ -235,7 +235,7 @@ class TestConversationDAOUnit:
         assert params["user_id"] == 9
         assert isinstance(params["target_date"], date)
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_has_access_true_false(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         # d'abord True
@@ -248,7 +248,7 @@ class TestConversationDAOUnit:
         mock_cur.fetchone.return_value = None
         assert dao.has_access(99, 999) is False
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_has_write_access_true_false(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = (1,)
@@ -259,7 +259,7 @@ class TestConversationDAOUnit:
         mock_cur.fetchone.return_value = None
         assert dao.has_write_access(10, 101) is False
 
-    @patch("src.DAO.ConversationDAO.DBConnection")
+    @patch("DAO.ConversationDAO.DBConnection")
     def test_add_user_access_upsert(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.rowcount = 1

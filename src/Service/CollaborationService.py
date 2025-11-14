@@ -1,11 +1,11 @@
 import logging
 from typing import List
-from src.DAO.CollaborationDAO import CollaborationDAO
-from src.DAO.UserDAO import UserDAO
-from src.DAO.ConversationDAO import ConversationDAO
-from src.ObjetMetier.Collaboration import Collaboration
-from src.Utils.Singleton import Singleton
-from src.Utils.log_decorator import log
+from DAO.CollaborationDAO import CollaborationDAO
+from DAO.UserDAO import UserDAO
+from DAO.ConversationDAO import ConversationDAO
+from ObjetMetier.Collaboration import Collaboration
+from Utils.Singleton import Singleton
+from Utils.log_decorator import log
 
 
 class CollaborationService(metaclass=Singleton):

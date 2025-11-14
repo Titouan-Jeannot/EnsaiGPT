@@ -10,16 +10,16 @@ try:  # pragma: no cover
     from Service.UserService import UserService
     from Service.MessageService import MessageService
 except ImportError:  # pragma: no cover
-    from src.ObjetMetier.Conversation import Conversation  # pragma: no cover
-    from src.DAO.ConversationDAO import ConversationDAO  # pragma: no cover
-    from src.Service.UserService import UserService  # pragma: no cover
-    from src.Service.MessageService import MessageService  # pragma: no cover
+    from ObjetMetier.Conversation import Conversation  # pragma: no cover
+    from DAO.ConversationDAO import ConversationDAO  # pragma: no cover
+    from Service.UserService import UserService  # pragma: no cover
+    from Service.MessageService import MessageService  # pragma: no cover
 
 if TYPE_CHECKING:  # pragma: no cover
     try:  # pragma: no cover
         from Service.CollaborationService import CollaborationService  # pragma: no cover
     except ImportError:  # pragma: no cover
-        from src.Service.CollaborationService import CollaborationService  # pragma: no cover
+        from Service.CollaborationService import CollaborationService  # pragma: no cover
 
 
 class ConversationService:

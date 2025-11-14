@@ -2,10 +2,10 @@ import logging
 from datetime import datetime
 from typing import List
 
-from src.DAO.FeedbackDAO import FeedbackDAO
-from src.ObjetMetier.Feedback import Feedback
-from src.Utils.Singleton import Singleton
-from src.Utils.log_decorator import log
+from DAO.FeedbackDAO import FeedbackDAO
+from ObjetMetier.Feedback import Feedback
+from Utils.Singleton import Singleton
+from Utils.log_decorator import log
 
 
 class FeedbackService(metaclass=Singleton):

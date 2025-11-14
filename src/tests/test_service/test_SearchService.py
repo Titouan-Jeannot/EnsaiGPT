@@ -2,14 +2,14 @@ import unittest
 from unittest.mock import MagicMock, patch
 from datetime import datetime
 
-from src.Service.SearchService import SearchService 
-from src.ObjetMetier.Message import Message   # <-- correction d'import
-from src.ObjetMetier.Conversation import Conversation
-from src.ObjetMetier.Collaboration import Collaboration
+from Service.SearchService import SearchService 
+from ObjetMetier.Message import Message   # <-- correction d'import
+from ObjetMetier.Conversation import Conversation
+from ObjetMetier.Collaboration import Collaboration
 
-PATH_COLLABORATION_DAO = 'src.Service.SearchService.CollaborationDAO'
-PATH_MESSAGE_DAO = 'src.Service.SearchService.MessageDAO'
-PATH_CONVERSATION_DAO = 'src.Service.SearchService.ConversationDAO'
+PATH_COLLABORATION_DAO = 'Service.SearchService.CollaborationDAO'
+PATH_MESSAGE_DAO = 'Service.SearchService.MessageDAO'
+PATH_CONVERSATION_DAO = 'Service.SearchService.ConversationDAO'
 
 
 class TestSearchService:

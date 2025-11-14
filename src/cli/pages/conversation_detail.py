@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List
 
-from src.cli.ui import (
+from cli.ui import (
     session,
     ask_int,
     ask_nonempty,
@@ -11,9 +11,9 @@ from src.cli.ui import (
     QuitCommand,
     ensure_logged_in,
 )
-from src.cli.context import conv_service, msg_service, collab_service, collab_dao, llm_service
-from src.cli.pages import feedback as feedback_pages
-from src.cli.ui import print_table
+from cli.context import conv_service, msg_service, collab_service, collab_dao, llm_service
+from cli.pages import feedback as feedback_pages
+from cli.ui import print_table
 
 
 def page_conversation(conv_id: int) -> None:
@@ -68,10 +68,10 @@ def page_conversation(conv_id: int) -> None:
         elif choice == 4:
             print("Parametrage non implemente.")
         elif choice == 5:
-            from src.cli.pages import collaboration
+            from cli.pages import collaboration
             collaboration.show_collaborators(conv_id)
         elif choice == 6:
-            from src.cli.pages import collaboration
+            from cli.pages import collaboration
             collaboration.share_conversation(conv_id)
         elif choice == 7:
             conversation_actions(conv_id)

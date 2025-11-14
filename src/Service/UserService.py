@@ -5,9 +5,9 @@ try:
     from DAO.UserDAO import UserDAO
     from Service.AuthService import AuthService
 except Exception:
-    from src.ObjetMetier.User import User
-    from src.DAO.UserDAO import UserDAO
-    from src.Service.AuthService import AuthService
+    from ObjetMetier.User import User
+    from DAO.UserDAO import UserDAO
+    from Service.AuthService import AuthService
 import re
 import os
 import base64

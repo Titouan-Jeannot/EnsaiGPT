@@ -1,7 +1,7 @@
 # src/main.py
 
-from src.cli.ui import QuitCommand
-from src.cli import page_home  # récupéré via cli.__init__
+from cli.ui import QuitCommand
+from cli import page_home  # récupéré via cli.__init__
 
 
 def main() -> None:

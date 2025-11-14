@@ -3,10 +3,10 @@ import datetime
 import pytest
 from unittest.mock import MagicMock
 
-from src.Service.MessageService import MessageService
+from Service.MessageService import MessageService
 
 # On importe la classe Message réelle pour garder la même signature que le projet
-from src.ObjetMetier.Message import Message
+from ObjetMetier.Message import Message
 
 
 # -------- Helpers --------

@@ -38,9 +38,9 @@ try:
     from ObjetMetier.Conversation import Conversation
     from ObjetMetier.User import User
 except Exception:  # import fallback
-    from src.ObjetMetier.Message import Message  # type: ignore
-    from src.ObjetMetier.Conversation import Conversation  # type: ignore
-    from src.ObjetMetier.User import User  # type: ignore
+    from ObjetMetier.Message import Message  # type: ignore
+    from ObjetMetier.Conversation import Conversation  # type: ignore
+    from ObjetMetier.User import User  # type: ignore
 
 # --- DAO (typing uniquement) ---
 if TYPE_CHECKING:
@@ -49,9 +49,9 @@ if TYPE_CHECKING:
         from DAO.ConversationDAO import ConversationDAO
         from DAO.UserDAO import UserDAO
     except Exception:
-        from src.DAO.MessageDAO import MessageDAO  # type: ignore
-        from src.DAO.ConversationDAO import ConversationDAO  # type: ignore
-        from src.DAO.UserDAO import UserDAO  # type: ignore
+        from DAO.MessageDAO import MessageDAO  # type: ignore
+        from DAO.ConversationDAO import ConversationDAO  # type: ignore
+        from DAO.UserDAO import UserDAO  # type: ignore
 else:
     from typing import Any as MessageDAO  # type: ignore
     from typing import Any as ConversationDAO  # type: ignore

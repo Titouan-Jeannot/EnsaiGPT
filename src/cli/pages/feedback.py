@@ -3,9 +3,9 @@
 from datetime import datetime
 from typing import List
 
-from src.ObjetMetier.Feedback import Feedback
-from src.cli.ui import ask_yes_no, ask_optional, BackCommand, session
-from src.cli.context import feedback_dao  # pour l'instant, DAO direct
+from ObjetMetier.Feedback import Feedback
+from cli.ui import ask_yes_no, ask_optional, BackCommand, session
+from cli.context import feedback_dao  # pour l'instant, DAO direct
 
 
 def build_feedback_object(
@@ -47,7 +47,7 @@ def add_feedback_flow(conv_id: int, messages: List) -> None:
         target_id = default.id_message
     else:
         ids = [msg.id_message for msg in agent_messages]
-        from src.cli.ui import ask_int
+        from cli.ui import ask_int
         try:
             target_id = ask_int("Choisir ID du message agent", ids)
         except BackCommand:

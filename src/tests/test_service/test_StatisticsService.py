@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 import pytest
 
-from src.Service.StatisticsService import StatisticsService
+from Service.StatisticsService import StatisticsService
 
 T0 = datetime.datetime(2025, 1, 1, 10, 0, 0)
 

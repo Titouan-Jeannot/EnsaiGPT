@@ -1,14 +1,14 @@
 # src/cli/pages/collaboration.py
 
-from src.cli.ui import (
+from cli.ui import (
     ask_int,
     ask_nonempty,
     ask_yes_no,
     BackCommand,
 )
-from src.cli.context import collab_service, collab_dao, user_service
-from src.cli.ui import print_table
-from src.cli.ui import session
+from cli.context import collab_service, collab_dao, user_service
+from cli.ui import print_table
+from cli.ui import session
 
 
 def page_join_collab() -> None:
@@ -30,7 +30,7 @@ def page_join_collab() -> None:
         print("Token invalide ou acces refuse.")
         return
     print("Collaboration ajoutee.")
-    from src.cli.pages import conversation_detail
+    from cli.pages import conversation_detail
     conversation_detail.page_conversation(conv_id)
 
 
@@ -75,7 +75,7 @@ def show_collaborators(conv_id: int) -> None:
         choice = ask_int("Action", [1, 2, 9])
     except BackCommand:
         return
-    from src.cli.context import collab_service as cs
+    from cli.context import collab_service as cs
     if choice == 1:
         try:
             new_role = ask_nonempty("Nouveau role (admin/writer/viewer/banned)")
@@ -104,7 +104,7 @@ def share_conversation(conv_id: int) -> None:
         can_write = ask_yes_no("Autoriser l'ecriture ?")
     except BackCommand:
         return
-    from src.cli.context import conv_service
+    from cli.context import conv_service
     try:
         conv_service.share_conversation(
             conv_id, session.current_user_id, target_user, can_write

@@ -2,9 +2,9 @@ import re
 from datetime import datetime
 import pytest
 
-from src.DAO.DBConnector import DBConnection
-from src.DAO.ConversationDAO import ConversationDAO
-from src.ObjetMetier.Conversation import Conversation
+from DAO.DBConnector import DBConnection
+from DAO.ConversationDAO import ConversationDAO
+from ObjetMetier.Conversation import Conversation
 
 
 # ---------- Helpers infra ----------

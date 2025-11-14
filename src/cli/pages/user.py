@@ -1,6 +1,6 @@
 # src/cli/pages/user.py
 
-from src.cli.ui import (
+from cli.ui import (
     session,
     ask_int,
     ask_optional,
@@ -10,7 +10,7 @@ from src.cli.ui import (
     reset_session,
     ensure_logged_in,
 )
-from src.cli.context import user_service
+from cli.context import user_service
 
 
 def page_user_home() -> None:
@@ -31,13 +31,13 @@ def page_user_home() -> None:
         if choice == 1:
             page_account()
         elif choice == 2:
-            from src.cli.pages import conversations
+            from cli.pages import conversations
             conversations.page_manage()
         elif choice == 3:
-            from src.cli.pages import conversations
+            from cli.pages import conversations
             conversations.create_conversation()
         elif choice == 4:
-            from src.cli.pages import collaboration
+            from cli.pages import collaboration
             collaboration.page_join_collab()
         elif choice == 9:
             print("Deconnexion effectuee.")
@@ -103,7 +103,7 @@ def update_account(user_id: int) -> None:
         nom = ask_optional("Nouveau nom")
         prenom = ask_optional("Nouveau prenom")
         setting_param = ask_optional("Nouveau parametre assistant")
-        from src.cli.ui import ask_nonempty
+        from cli.ui import ask_nonempty
         change_password = ask_yes_no("Modifier le mot de passe ?")
         password = None
         if change_password:

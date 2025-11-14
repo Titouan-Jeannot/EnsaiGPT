@@ -2,8 +2,8 @@ import logging
 from typing import List, Optional
 from psycopg2.extras import RealDictCursor
 
-from src.DAO.DBConnector import DBConnection
-from src.ObjetMetier.Feedback import Feedback
+from DAO.DBConnector import DBConnection
+from ObjetMetier.Feedback import Feedback
 
 
 class FeedbackDAO:

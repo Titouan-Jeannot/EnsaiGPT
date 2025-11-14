@@ -1,6 +1,6 @@
 # src/cli/pages/auth.py
 
-from src.cli.ui import (
+from cli.ui import (
     ask_nonempty,
     ask_optional,
     ask_int,
@@ -11,7 +11,7 @@ from src.cli.ui import (
     reset_session,
     ensure_logged_in,
 )
-from src.cli.context import user_service
+from cli.context import user_service
 
 
 def page_login() -> None:
@@ -37,7 +37,7 @@ def page_login() -> None:
     session.is_guest = False
     print(f"Connexion reussie. Bonjour {session.current_username}!")
 
-    from src.cli.pages import user as user_pages
+    from cli.pages import user as user_pages
     user_pages.page_user_home()
 
 
@@ -76,7 +76,7 @@ def page_guest_home() -> None:
     except BackCommand:
         return
     if choice == 1:
-        from src.cli.pages import collaboration
+        from cli.pages import collaboration
         collaboration.page_join_collab()
     elif choice == 9:
         session.is_guest = False

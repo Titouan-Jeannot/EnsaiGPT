@@ -15,7 +15,7 @@ def init_db_for_url(db_url: str):
             conn.rollback()
             print("❌ Erreur lors de la création du schéma :", e)
 
-# rétro-compat : permet encore `python -m src.Database.init_db` pour la base principale
+# rétro-compat : permet encore `python -m Database.init_db` pour la base principale
 if __name__ == "__main__":
     from .settings import DATABASE_URL
     init_db_for_url(DATABASE_URL)

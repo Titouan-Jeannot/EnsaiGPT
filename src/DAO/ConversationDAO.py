@@ -3,10 +3,10 @@ from uuid import uuid4
 from datetime import datetime, date
 from typing import List, Optional, Dict, Any
 
-from src.DAO.DBConnector import DBConnection
-from src.ObjetMetier.Conversation import Conversation
-from src.Utils.Singleton import Singleton
-from src.Utils.log_decorator import log
+from DAO.DBConnector import DBConnection
+from ObjetMetier.Conversation import Conversation
+from Utils.Singleton import Singleton
+from Utils.log_decorator import log
 
 
 class ConversationDAO(metaclass=Singleton):

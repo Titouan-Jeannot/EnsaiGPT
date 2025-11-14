@@ -2,8 +2,8 @@
 import os
 import pytest
 import psycopg2
-from src.Database.settings import DATABASE_URL_TEST
-from src.Database.manage_test_db import ensure_test_db_exists, init_test_db
+from Database.settings import DATABASE_URL_TEST
+from Database.manage_test_db import ensure_test_db_exists, init_test_db
 
 @pytest.fixture(scope="session", autouse=True)
 def _prepare_test_db():
