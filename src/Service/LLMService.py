@@ -360,3 +360,75 @@ class LLMService:
 
         created: Message = create_fn(msg_obj)
         return created
+
+    def requete_invitee(prompt: str) -> str:
+        """
+        Méthode statique pour des requêtes invitées simples.
+        """
+        url = f"{self.base_url}/generate"
+        print(f"[LLMService] Appel API POST inivitee {url}")
+
+        payload: Dict[str, Any] = {
+            "history": prompt,
+            "max_tokens": max_tokens if max_tokens is not None else self.default_max_tokens,
+            "temperature": temperature if temperature is not None else self.default_temperature,
+            "top_p": 1,
+        }
+
+        print(f"[LLMService] Payload envoyé invitee: {payload}")
+
+        headers = {
+            "accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            resp = requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(f"[LLMService] HTTP ERROR invitee {resp.status_code}: {resp.text}")
+            raise RuntimeError(
+                f"[LLM] HTTP invitee {resp.status_code} sur {url} – corps: {resp.text[:800]}"
+            ) from e
+        except requests.exceptions.Timeout as e:
+            raise RuntimeError(f"[LLM] Timeout invitee ({self.timeout}s) sur {url}") from e
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"[LLM] Erreur réseau sur invitee {url}: {e}") from e
+
+        try:
+            data = resp.json()
+        except ValueError as e:
+            print(f"[LLMService] Réponse non JSON invitee : {resp.text[:800]}")
+            raise RuntimeError(f"[LLM] Réponse non-JSON depuis invitee {url}") from e
+
+        print(f"[LLMService] Réponse brute invitee: {data}")
+
+        # On suit exactement le format de l'exemple:
+        # data["choices"][0]["message"]["content"]
+        try:
+            first_choice = data["choices"][0]
+            message = first_choice["message"]
+            content = str(message.get("content", ""))
+        except Exception as e:
+            raise RuntimeError(
+                f"[LLM] Format de réponse inattendu, impossible de lire choices[0].message.content: {data}"
+            ) from e
+
+        usage_raw = data.get("usage", {}) if isinstance(data, dict) else {}
+        usage: Dict[str, int] = {}
+        if isinstance(usage_raw, dict):
+            usage = {
+                "prompt_tokens": int(usage_raw.get("prompt_tokens", 0)),
+                "completion_tokens": int(usage_raw.get("completion_tokens", 0)),
+                "total_tokens": int(usage_raw.get("total_tokens", 0)),
+            }
+
+        return {
+            "content": content,
+            "usage": usage,
+        }
