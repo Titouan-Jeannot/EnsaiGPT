@@ -308,6 +308,7 @@ def page_send_request_invitee() -> None:
         print(f"Erreur lors de la generation de la reponse: {e}")
         return
     print(f"Réponse: {response['content']}")
+    page_invitee()
 
 
 def page_login() -> None:
@@ -441,6 +442,7 @@ def page_account() -> None:
             return
         elif choice == 0:
             raise QuitCommand()
+
 
 
 def update_account(user_id: int) -> None:

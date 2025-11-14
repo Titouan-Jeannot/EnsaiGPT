@@ -361,6 +361,7 @@ class LLMService:
         created: Message = create_fn(msg_obj)
         return created
 
+    @staticmethod
     def requete_invitee(prompt: str) -> str:
         """
         Méthode statique pour des requêtes invitées simples.
@@ -372,10 +373,21 @@ class LLMService:
         url = f"https://ensai-gpt-109912438483.europe-west4.run.app/generate"
         print(f"[LLMService] Appel API POST inivitee {url}")
 
+        history_invitee = [
+    {
+      "content": "Tu es un assistant utile.",
+      "role": "system"
+    },
+    {
+      "content": prompt,
+      "role": "user"
+    }
+  ]
+
         payload: Dict[str, Any] = {
-            "history": prompt,
-            "max_tokens": max_tokens if max_tokens is not None else  default_max_tokens_invite,
-            "temperature": temperature if temperature is not None else default_temperature_invite,
+            "history": history_invitee,
+            "max_tokens": default_max_tokens_invite,
+            "temperature": default_temperature_invite,
             "top_p": 1,
         }
 
