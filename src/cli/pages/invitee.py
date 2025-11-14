@@ -5,6 +5,7 @@ from cli.ui import QuitCommand, ask_int, BackCommand, ask_nonempty
 # from cli.Service.LLMService import llm_service
 # ou : from Service.LLMService import llm_service
 # (je laisse le nom llm_service tel que tu l'utilises plus bas)
+from cli.context import llm_service
 
 def page_invitee() -> None:
     print("\n=== Mode invite ===")
