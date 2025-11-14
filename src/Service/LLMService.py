@@ -365,13 +365,17 @@ class LLMService:
         """
         Méthode statique pour des requêtes invitées simples.
         """
-        url = f"{self.base_url}/generate"
+
+        default_temperature_invite = 0.7
+        default_max_tokens_invite = 512
+        timeout_invite = 20.0
+        url = f"https://ensai-gpt-109912438483.europe-west4.run.app/generate"
         print(f"[LLMService] Appel API POST inivitee {url}")
 
         payload: Dict[str, Any] = {
             "history": prompt,
-            "max_tokens": max_tokens if max_tokens is not None else self.default_max_tokens,
-            "temperature": temperature if temperature is not None else self.default_temperature,
+            "max_tokens": max_tokens if max_tokens is not None else  default_max_tokens_invite,
+            "temperature": temperature if temperature is not None else default_temperature_invite,
             "top_p": 1,
         }
 
@@ -387,7 +391,7 @@ class LLMService:
                 url,
                 json=payload,
                 headers=headers,
-                timeout=self.timeout,
+                timeout=timeout_invite,
             )
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
@@ -396,7 +400,7 @@ class LLMService:
                 f"[LLM] HTTP invitee {resp.status_code} sur {url} – corps: {resp.text[:800]}"
             ) from e
         except requests.exceptions.Timeout as e:
-            raise RuntimeError(f"[LLM] Timeout invitee ({self.timeout}s) sur {url}") from e
+            raise RuntimeError(f"[LLM] Timeout invitee ({timeout_invite}s) sur {url}") from e
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"[LLM] Erreur réseau sur invitee {url}: {e}") from e
 
