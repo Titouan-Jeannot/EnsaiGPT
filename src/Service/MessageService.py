@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, timezone
-from config import AGENT_USER_ID
+# from config import AGENT_USER_ID*
+AGENT_USER_ID = 6
 
 try:
     from ObjetMetier.Message import Message

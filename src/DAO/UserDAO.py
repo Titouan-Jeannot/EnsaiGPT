@@ -25,7 +25,9 @@ class UserDAO:
         """
         try:
             with DBConnection().connection as conn:
-                with conn.cursor(RealDictCursor) as cur:
+                # psycopg2 expects cursor_factory as keyword; otherwise RealDictCursor is
+                # treated as the cursor name (a str is required) and raises a TypeError.
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     cur.execute(
                         query,
                         {
