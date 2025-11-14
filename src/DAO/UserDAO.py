@@ -3,10 +3,10 @@ import logging
 from psycopg2.errors import DatabaseError, IntegrityError
 from psycopg2.extras import RealDictCursor
 
-from src.DAO.DBConnector import DBConnection
+from DAO.DBConnector import DBConnection
 
 try:
-    from src.ObjetMetier.User import User
+    from ObjetMetier.User import User
 except Exception:
     from ObjetMetier.User import User
 
@@ -197,7 +197,7 @@ from psycopg2 import IntegrityError, DatabaseError
 try:
     from ObjetMetier.User import User
 except Exception:
-    from src.ObjetMetier.User import User
+    from ObjetMetier.User import User
 
 
 class UserDAO:

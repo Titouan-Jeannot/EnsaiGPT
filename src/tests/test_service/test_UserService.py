@@ -4,11 +4,11 @@ import datetime
 import pytest
 
 # On importe *le module* pour accéder à la classe AuthService que UserService utilise réellement
-from src.Service import UserService as USvcMod
-from src.Service.UserService import UserService
+from Service import UserService as USvcMod
+from Service.UserService import UserService
 
 try:
-    from src.ObjetMetier.User import User
+    from ObjetMetier.User import User
 except Exception:
     # Backup minimal si l'import du modèle échoue
     class User:

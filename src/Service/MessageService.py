@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone
-# from config import AGENT_USER_ID*
+#from config import AGENT_USER_ID
 AGENT_USER_ID = 6
 
 try:
@@ -9,10 +9,10 @@ try:
     from Service.UserService import UserService
     from Service.AuthService import AuthService
 except Exception:
-    from src.ObjetMetier.Message import Message
-    from src.DAO.MessageDAO import MessageDAO
-    from src.Service.UserService import UserService
-    from src.Service.AuthService import AuthService
+    from ObjetMetier.Message import Message
+    from DAO.MessageDAO import MessageDAO
+    from Service.UserService import UserService
+    from Service.AuthService import AuthService
 
 
 class MessageService:

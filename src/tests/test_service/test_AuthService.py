@@ -5,7 +5,7 @@ import time
 import pytest
 from unittest.mock import MagicMock
 
-from src.Service.AuthService import AuthService
+from Service.AuthService import AuthService
 
 # Petit helper pour fabriquer un "user" léger
 class DummyUser:

@@ -4,8 +4,8 @@ import pytest
 
 from psycopg2.errors import IntegrityError, DatabaseError
 
-from src.DAO.UserDAO import UserDAO
-from src.ObjetMetier.User import User
+from DAO.UserDAO import UserDAO
+from ObjetMetier.User import User
 
 
 def make_mock_db():
@@ -38,7 +38,7 @@ def dummy_user(id_=None):
 
 
 class TestUserDAOUnit:
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_create_success(self, MockDB):
         mock_db, mock_conn, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = {"id_user": 123}
@@ -57,7 +57,7 @@ class TestUserDAOUnit:
         assert params["nom"] == "Doe"
         mock_conn.commit.assert_not_called()  # commit géré par le context manager
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_create_integrity_error_raises_valueerror(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.execute.side_effect = IntegrityError("dup")
@@ -67,7 +67,7 @@ class TestUserDAOUnit:
         with pytest.raises(ValueError):
             dao.create(dummy_user())
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_create_database_error_bubbles(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.execute.side_effect = DatabaseError("db down")
@@ -77,7 +77,7 @@ class TestUserDAOUnit:
         with pytest.raises(DatabaseError):
             dao.create(dummy_user())
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_read_found(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = {
@@ -105,7 +105,7 @@ class TestUserDAOUnit:
         assert "where id_user = %(id)s" in sql.lower()
         assert params["id"] == 7
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_read_none(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = None
@@ -114,7 +114,7 @@ class TestUserDAOUnit:
         dao = UserDAO()
         assert dao.read(999) is None
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_update_success(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.rowcount = 1
@@ -124,7 +124,7 @@ class TestUserDAOUnit:
         ok = dao.update(dummy_user(id_=5))
         assert ok is True
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_update_integrity_error_raises_valueerror(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.execute.side_effect = IntegrityError("dup")
@@ -134,7 +134,7 @@ class TestUserDAOUnit:
         with pytest.raises(ValueError):
             dao.update(dummy_user(id_=6))
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_update_database_error_bubbles(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.execute.side_effect = DatabaseError("db")
@@ -144,7 +144,7 @@ class TestUserDAOUnit:
         with pytest.raises(DatabaseError):
             dao.update(dummy_user(id_=6))
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_delete_success(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.rowcount = 1
@@ -153,7 +153,7 @@ class TestUserDAOUnit:
         dao = UserDAO()
         assert dao.delete(10) is True
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_get_user_by_email_found(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = {
@@ -178,7 +178,7 @@ class TestUserDAOUnit:
         assert "where mail = %(email)s" in sql.lower()
         assert params["email"] == "bob@example.com"
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_get_user_by_email_none(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = None
@@ -187,7 +187,7 @@ class TestUserDAOUnit:
         dao = UserDAO()
         assert dao.get_user_by_email("nobody@example.com") is None
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_get_user_by_username_found(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = {
@@ -209,7 +209,7 @@ class TestUserDAOUnit:
         u = dao.get_user_by_username("eve")
         assert u is not None and u.username == "eve"
 
-    @patch("src.DAO.UserDAO.DBConnection")
+    @patch("DAO.UserDAO.DBConnection")
     def test_get_user_by_username_none(self, MockDB):
         mock_db, _, mock_cur = make_mock_db()
         mock_cur.fetchone.return_value = None

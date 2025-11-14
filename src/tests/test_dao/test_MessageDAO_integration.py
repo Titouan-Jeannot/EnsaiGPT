@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 import time
 import pytest
 
-from src.DAO.DBConnector import DBConnection
-from src.DAO.MessageDAO import MessageDAO
-from src.ObjetMetier.Message import Message
+from DAO.DBConnector import DBConnection
+from DAO.MessageDAO import MessageDAO
+from ObjetMetier.Message import Message
 
 
 def _table_exists(name: str) -> bool:

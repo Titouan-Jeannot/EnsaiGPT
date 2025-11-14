@@ -3,9 +3,9 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 import pytest
 
-from src.Service.FeedbackService import FeedbackService
-from src.ObjetMetier.Feedback import Feedback
-from src.Utils.Singleton import Singleton
+from Service.FeedbackService import FeedbackService
+from ObjetMetier.Feedback import Feedback
+from Utils.Singleton import Singleton
 
 
 def make_feedback(**kw):
@@ -33,7 +33,7 @@ def _fresh_service_with_mockdao(MockDAO):
 
 
 def test_add_feedback_success():
-    with patch("src.Service.FeedbackService.FeedbackDAO") as MockDAO:
+    with patch("Service.FeedbackService.FeedbackDAO") as MockDAO:
         s, dao = _fresh_service_with_mockdao(MockDAO)
         dao.create.return_value = make_feedback(id_feedback=123, is_like=True, comment="nice")
 
@@ -65,7 +65,7 @@ def test_add_feedback_validations(user_id, message_id, is_like, comment):
 
 
 def test_get_feedback_by_message():
-    with patch("src.Service.FeedbackService.FeedbackDAO") as MockDAO:
+    with patch("Service.FeedbackService.FeedbackDAO") as MockDAO:
         s, dao = _fresh_service_with_mockdao(MockDAO)
         dao.find_by_message.return_value = [
             make_feedback(id_feedback=1, id_message=99, is_like=True),
@@ -80,7 +80,7 @@ def test_get_feedback_by_message():
 
 
 def test_get_feedback_by_user():
-    with patch("src.Service.FeedbackService.FeedbackDAO") as MockDAO:
+    with patch("Service.FeedbackService.FeedbackDAO") as MockDAO:
         s, dao = _fresh_service_with_mockdao(MockDAO)
         dao.find_by_user.return_value = [make_feedback(id_feedback=7, id_user=5)]
 
@@ -92,7 +92,7 @@ def test_get_feedback_by_user():
 
 
 def test_counts():
-    with patch("src.Service.FeedbackService.FeedbackDAO") as MockDAO:
+    with patch("Service.FeedbackService.FeedbackDAO") as MockDAO:
         s, dao = _fresh_service_with_mockdao(MockDAO)
         dao.count_likes.return_value = 3
         dao.count_dislikes.return_value = 1

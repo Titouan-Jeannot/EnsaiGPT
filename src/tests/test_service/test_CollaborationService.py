@@ -76,9 +76,9 @@ psycopg2.pool.SimpleConnectionPool = _DummyPool  # type: ignore
 # --------------------------------------------------------------------
 # Imports après configuration du chemin
 # --------------------------------------------------------------------
-from src.ObjetMetier.Collaboration import Collaboration
-from src.Service.CollaborationService import CollaborationService
-from src.Utils.Singleton import Singleton
+from ObjetMetier.Collaboration import Collaboration
+from Service.CollaborationService import CollaborationService
+from Utils.Singleton import Singleton
 
 
 # --------------------------------------------------------------------
@@ -170,9 +170,9 @@ def service_setup(monkeypatch):
     )
 
     # Monkeypatcher les classes importées dans le module de service
-    monkeypatch.setattr("src.Service.CollaborationService.CollaborationDAO", lambda: collab_dao)
-    monkeypatch.setattr("src.Service.CollaborationService.UserDAO", lambda: user_dao)
-    monkeypatch.setattr("src.Service.CollaborationService.ConversationDAO", lambda: conversation_dao)
+    monkeypatch.setattr("Service.CollaborationService.CollaborationDAO", lambda: collab_dao)
+    monkeypatch.setattr("Service.CollaborationService.UserDAO", lambda: user_dao)
+    monkeypatch.setattr("Service.CollaborationService.ConversationDAO", lambda: conversation_dao)
 
     # Reset le singleton si le service l'utilise
     Singleton._instances.pop(CollaborationService, None)

@@ -2,9 +2,9 @@ from datetime import datetime
 import time
 import pytest
 
-from src.DAO.DBConnector import DBConnection
-from src.DAO.FeedbackDAO import FeedbackDAO
-from src.ObjetMetier.Feedback import Feedback
+from DAO.DBConnector import DBConnection
+from DAO.FeedbackDAO import FeedbackDAO
+from ObjetMetier.Feedback import Feedback
 
 
 def _table_exists(name: str) -> bool:

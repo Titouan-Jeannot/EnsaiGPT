@@ -1,7 +1,7 @@
 from datetime import datetime
 import pytest
 
-from src.ObjetMetier.Conversation import Conversation
+from ObjetMetier.Conversation import Conversation
 
 
 def test_conversation_initialization():

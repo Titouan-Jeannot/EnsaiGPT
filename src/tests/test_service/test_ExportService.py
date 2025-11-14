@@ -9,7 +9,7 @@ from unittest.mock import Mock
 # -------------------------------------------------------------
 ExportService = None
 import_error = None
-for module_name in ["Service.ExportService", "src.Service.ExportService"]:
+for module_name in ["Service.ExportService", "Service.ExportService"]:
     try:
         mod = importlib.import_module(module_name)
         ExportService = getattr(mod, "ExportService", None)
@@ -23,7 +23,7 @@ for module_name in ["Service.ExportService", "src.Service.ExportService"]:
 
 if ExportService is None:  # pragma: no cover
     raise ImportError(
-        f"Impossible d'importer ExportService depuis Service ou src.Service.\nDernière erreur : {import_error}"
+        f"Impossible d'importer ExportService depuis Service ou Service.\nDernière erreur : {import_error}"
     )
 
 # -------------------------------------------------------------

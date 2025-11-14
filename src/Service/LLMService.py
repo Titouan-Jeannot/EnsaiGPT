@@ -10,10 +10,10 @@ AGENT_USER_ID = 6  # ID de l'agent en base
 
 # === Imports métier ===
 try:
-    from src.ObjetMetier.Message import Message
-    from src.ObjetMetier.Conversation import Conversation
-    from src.ObjetMetier.User import User
-except Exception:
+    from ObjetMetier.Message import Message
+    from ObjetMetier.Conversation import Conversation
+    from ObjetMetier.User import User
+except Exception:  # import fallback
     from ObjetMetier.Message import Message  # type: ignore
     from ObjetMetier.Conversation import Conversation  # type: ignore
     from ObjetMetier.User import User  # type: ignore
@@ -28,6 +28,10 @@ if TYPE_CHECKING:
         from DAO.MessageDAO import MessageDAO  # type: ignore
         from DAO.ConversationDAO import ConversationDAO  # type: ignore
         from DAO.UserDAO import UserDAO  # type: ignore
+else:
+    from typing import Any as MessageDAO  # type: ignore
+    from typing import Any as ConversationDAO  # type: ignore
+    from typing import Any as UserDAO  # type: ignore
 
 
 class LLMService:

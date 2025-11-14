@@ -2,8 +2,8 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 import pytest
 
-from src.DAO.FeedbackDAO import FeedbackDAO
-from src.ObjetMetier.Feedback import Feedback
+from DAO.FeedbackDAO import FeedbackDAO
+from ObjetMetier.Feedback import Feedback
 
 
 def make_mock_db(rows=None, one=None, rowcount=1):
@@ -34,7 +34,7 @@ def make_feedback(**kw):
 
 
 def test_create_success():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(one={
             "id_feedback": 111, "id_user": 10, "id_message": 20,
             "is_like": True, "comment": "ok", "created_at": datetime(2025,1,1,12),
@@ -50,7 +50,7 @@ def test_create_success():
 
 
 def test_read_found():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(one={
             "id_feedback": 5, "id_user": 1, "id_message": 2,
             "is_like": False, "comment": "meh", "created_at": datetime(2025,1,1,10),
@@ -63,7 +63,7 @@ def test_read_found():
 
 
 def test_read_not_found():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(one=None)
         MockDBC.return_value = db
         dao = FeedbackDAO()
@@ -72,7 +72,7 @@ def test_read_not_found():
 
 
 def test_update_success():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(rowcount=1)
         MockDBC.return_value = db
         dao = FeedbackDAO()
@@ -82,7 +82,7 @@ def test_update_success():
 
 
 def test_delete_success():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(rowcount=1)
         MockDBC.return_value = db
         dao = FeedbackDAO()
@@ -90,7 +90,7 @@ def test_delete_success():
 
 
 def test_find_by_message():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(rows=[
             {"id_feedback": 1, "id_user": 10, "id_message": 99, "is_like": True, "comment": "A", "created_at": datetime(2025,1,1,10)},
             {"id_feedback": 2, "id_user": 11, "id_message": 99, "is_like": False, "comment": "B", "created_at": datetime(2025,1,1,11)},
@@ -102,7 +102,7 @@ def test_find_by_message():
 
 
 def test_find_by_user():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(rows=[
             {"id_feedback": 3, "id_user": 7, "id_message": 50, "is_like": True, "comment": "C", "created_at": datetime(2025,1,2,9)}
         ])
@@ -113,7 +113,7 @@ def test_find_by_user():
 
 
 def test_count_likes_dislikes():
-    with patch("src.DAO.FeedbackDAO.DBConnection") as MockDBC:
+    with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         # likes
         db1, conn1, cur1 = make_mock_db(one={"n": 4})
         # dislikes

@@ -7,9 +7,9 @@ try:
     from ObjetMetier.Conversation import Conversation
     from ObjetMetier.User import User
 except Exception:
-    from src.ObjetMetier.Message import Message  # type: ignore
-    from src.ObjetMetier.Conversation import Conversation  # type: ignore
-    from src.ObjetMetier.User import User  # type: ignore
+    from ObjetMetier.Message import Message  # type: ignore
+    from ObjetMetier.Conversation import Conversation  # type: ignore
+    from ObjetMetier.User import User  # type: ignore
 
 # --- Types DAO / Services: uniquement pour l'analyse statique ---
 if TYPE_CHECKING:
@@ -21,12 +21,12 @@ if TYPE_CHECKING:
         from Service.CollaborationService import CollaborationService
         from Service.UserService import UserService
     except Exception:  # type: ignore
-        from src.DAO.MessageDAO import MessageDAO  # type: ignore
-        from src.DAO.ConversationDAO import ConversationDAO  # type: ignore
-        from src.DAO.UserDAO import UserDAO  # type: ignore
-        from src.DAO.CollaborationDAO import CollaborationDAO  # type: ignore
-        from src.Service.CollaborationService import CollaborationService  # type: ignore
-        from src.Service.UserService import UserService  # type: ignore
+        from DAO.MessageDAO import MessageDAO  # type: ignore
+        from DAO.ConversationDAO import ConversationDAO  # type: ignore
+        from DAO.UserDAO import UserDAO  # type: ignore
+        from DAO.CollaborationDAO import CollaborationDAO  # type: ignore
+        from Service.CollaborationService import CollaborationService  # type: ignore
+        from Service.UserService import UserService  # type: ignore
 else:
     from typing import Any as MessageDAO  # type: ignore
     from typing import Any as ConversationDAO  # type: ignore

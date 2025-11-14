@@ -2,9 +2,9 @@ from datetime import datetime
 import time
 import pytest
 
-from src.DAO.DBConnector import DBConnection
-from src.DAO.UserDAO import UserDAO
-from src.ObjetMetier.User import User
+from DAO.DBConnector import DBConnection
+from DAO.UserDAO import UserDAO
+from ObjetMetier.User import User
 
 
 # -------- Helpers schéma / infra --------

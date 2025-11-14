@@ -10,20 +10,20 @@ try:
     from ObjetMetier.User import User
     from ObjetMetier.Collaboration import Collaboration
 except Exception:
-    from src.ObjetMetier.Message import Message  # type: ignore
-    from src.ObjetMetier.Conversation import Conversation  # type: ignore
-    from src.ObjetMetier.User import User  # type: ignore
-    from src.ObjetMetier.Collaboration import Collaboration  # type: ignore
+    from ObjetMetier.Message import Message  # type: ignore
+    from ObjetMetier.Conversation import Conversation  # type: ignore
+    from ObjetMetier.User import User  # type: ignore
+    from ObjetMetier.Collaboration import Collaboration  # type: ignore
 
 # -----------------------------
 # Typage conditionnel (DAO uniquement pour mypy)
 # -----------------------------
 if TYPE_CHECKING:
-    from src.DAO.MessageDAO import MessageDAO
-    from src.DAO.ConversationDAO import ConversationDAO
-    from src.DAO.CollaborationDAO import CollaborationDAO
-    from src.DAO.UserDAO import UserDAO
-    from src.Service.UserService import UserService
+    from DAO.MessageDAO import MessageDAO
+    from DAO.ConversationDAO import ConversationDAO
+    from DAO.CollaborationDAO import CollaborationDAO
+    from DAO.UserDAO import UserDAO
+    from Service.UserService import UserService
 else:
     MessageDAO = object  # type: ignore
     ConversationDAO = object  # type: ignore

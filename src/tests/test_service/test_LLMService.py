@@ -7,12 +7,12 @@ from unittest.mock import MagicMock
 try:
     from ObjetMetier.Message import Message
 except Exception:
-    from src.ObjetMetier.Message import Message  # type: ignore
+    from ObjetMetier.Message import Message  # type: ignore
 
 try:
     from Service.LLMService import LLMService
 except Exception:
-    from src.Service.LLMService import LLMService  # type: ignore
+    from Service.LLMService import LLMService  # type: ignore
 
 
 # ---------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import pytest
-from src.ObjetMetier.Feedback import Feedback
+from ObjetMetier.Feedback import Feedback
 from datetime import datetime
 
 
