@@ -89,9 +89,9 @@ def ask_yes_no(prompt: str) -> bool:
     while True:
         raw = safe_input(f"{prompt} (y/n) ").strip().lower()
         check_special_command(raw)
-        if raw in {"y", "yes"}:
+        if raw in {"y", "yes", "o", "oui"}:
             return True
-        if raw in {"n", "no"}:
+        if raw in {"n", "no", "non"}:
             return False
         print("Merci de repondre par y ou n.")
 

@@ -88,6 +88,9 @@ def show_collaborators(conv_id: int) -> None:
         return
     try:
         target_user = ask_int("ID utilisateur cible", [])
+        if target_user not in [c.id_user for c in collaborators]:
+            print("Utilisateur non trouve parmi les collaborateurs.")
+            return
     except BackCommand:
         return
     print("1) Changer le role")
@@ -103,8 +106,8 @@ def show_collaborators(conv_id: int) -> None:
         except BackCommand:
             return
         try:
-            if target_user == session.current_user_id:
-                print("Vous ne pouvez pas changer votre propre role.")
+            if target_user == session.current_user_id and collab_service._count_admins(conv_id) <= 1:
+                print("Vous ne pouvez pas modifier votre propre role tant que vous etes le seul administrateur.")
                 return
             if new_role not in {"admin", "writer", "viewer", "banni"}:
                 print("Role invalide. Veuillez choisir parmi admin, writer, viewer, banni.")
@@ -118,6 +121,17 @@ def show_collaborators(conv_id: int) -> None:
         print("Role mis a jour." if updated else "Aucun changement effectue.")
     elif choice == 2:
         try:
+            if target_user == session.current_user_id and collab_service._count_collaborators(
+                conv_id
+            ) <= 1:
+                print(
+                    "Impossible de modifier votre propre role tant que vous etes seul dans cette conversation."
+                )
+                return
+
+            if target_user == session.current_user_id and collab_service._count_admins(conv_id) <= 1:
+                print("Vous ne pouvez pas vous supprimer vous-meme. Si vous êtes le seul admin. Veuillez d'abord promouvoir un autre utilisateur au rôle d'admin.")
+                return
             deleted = collab_service.delete_collaborator(
                 conv_id, target_user, session.current_user_id
             )

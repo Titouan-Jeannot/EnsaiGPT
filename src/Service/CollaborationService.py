@@ -52,6 +52,10 @@ class CollaborationService(metaclass=Singleton):
         collaborations = self.collab_dao.find_by_conversation(conversation_id)
         return len(collaborations)
 
+    def _count_admins(self, conversation_id: int) -> int:
+        collaborations = self.collab_dao.find_by_conversation(conversation_id)
+        return sum(1 for c in collaborations if c.role.lower() == "admin")
+
     # ------------------------------
     # Vérification des rôles
     # ------------------------------
@@ -144,6 +148,10 @@ class CollaborationService(metaclass=Singleton):
                 "Impossible de modifier votre propre rôle tant que vous êtes seul dans cette conversation."
             )
         return self.collab_dao.delete_by_conversation_and_user(conversation_id, target_user_id)
+
+    def remove_collaboration(self, conversation_id: int, user_id: int) -> bool:
+        """Supprime la collaboration d'un utilisateur sans vérification de droits."""
+        return self.collab_dao.delete_by_conversation_and_user(conversation_id, user_id)
 
     @log
     def change_role(

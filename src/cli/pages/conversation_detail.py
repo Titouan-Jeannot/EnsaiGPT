@@ -8,6 +8,7 @@ from cli.ui import (
     ask_int,
     ask_nonempty,
     ask_optional,
+    ask_yes_no,
     BackCommand,
     QuitCommand,
     ensure_logged_in,
@@ -104,7 +105,7 @@ def page_conversation(conv_id: int) -> None:
             print("5) Partager la conversation")
         else:
             print("5) Partager la conversation (admin requis)")
-        print("6) Actions (archiver/exporter)")
+        print("6) Actions (exporter/quitter/supprimer)")
         print("9) Retour")
         print("0) Quitter")
         try:
@@ -203,44 +204,7 @@ def conversation_actions(conv_id: int) -> bool:
     try:
         if not collab_service.is_admin(session.current_user_id, conv_id):
             print("1) Exporter la conversation")
-            print("9) Annuler")
-            try:
-                choice = ask_int("Action", [1, 9])
-            except BackCommand:
-                return False
-            if choice == 9:
-                return False
-            try:
-                if choice == 1:
-                    content = export_service.export_conversation(
-                        conv_id, session.current_user_id, fmt="plain"
-                    )
-                    try:
-                        target_path = ask_optional(
-                            "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
-                        )
-                    except BackCommand:
-                        target_path = None
-                    if target_path:
-                        try:
-                            with open(target_path, "w", encoding="utf-8") as handle:
-                                handle.write(content)
-                        except OSError as exc:
-                            print(f"Impossible d'ecrire le fichier: {exc}")
-                        else:
-                            print(f"Conversation exportee vers {target_path}.")
-                    else:
-                        print("\n--- Export conversation ---")
-                        print(content)
-                        print("--- Fin de l'export ---")
-            except Exception as exc:
-                print(f"Action impossible: {exc}")
-            return False
-
-
-        else:
-            print("1) Supprimer la conversation")
-            print("2) Exporter la conversation")
+            print("2) Quitter la conversation")
             print("9) Annuler")
             try:
                 choice = ask_int("Action", [1, 2, 9])
@@ -250,13 +214,6 @@ def conversation_actions(conv_id: int) -> bool:
                 return False
             try:
                 if choice == 1:
-                    conv_service.archive_conversation(conv_id, session.current_user_id)
-                    print("Conversation archivee. Retour a l'espace utilisateur.")
-                    from cli.pages import user
-
-                    user.page_user_home()
-                    return True
-                elif choice == 2:
                     content = export_service.export_conversation(
                         conv_id, session.current_user_id, fmt="plain"
                     )
@@ -278,6 +235,81 @@ def conversation_actions(conv_id: int) -> bool:
                         print("\n--- Export conversation ---")
                         print(content)
                         print("--- Fin de l'export ---")
+                elif choice == 2:
+                    if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(session.current_user_id, conv_id):
+                        print("Vous etes le seul administrateur. Vous ne pouvez pas quitter la conversation sans transferer les droits d'administration.")
+                        return False
+                    if ask_yes_no("Confirmer que vous voulez quitter la conversation ?") == True:
+                        collab_service.remove_collaboration(
+                            conv_id, session.current_user_id
+                        )
+                    print("Vous avez quitte la conversation. Retour a l'espace utilisateur.")
+                    from cli.pages import user
+
+                    user.page_user_home()
+                    return True
+
+            except Exception as exc:
+                print(f"Action impossible: {exc}")
+            return False
+
+
+        else:
+            print("1)  Exporter la conversation")
+            print("2)  Quitter la conversation")
+            print("3)  Supprimer la conversation")
+            print("9) Annuler")
+            try:
+                choice = ask_int("Action", [1, 2, 3, 9])
+            except BackCommand:
+                return False
+            if choice == 9:
+                return False
+            try:
+                if choice == 1:
+                    content = export_service.export_conversation(
+                        conv_id, session.current_user_id, fmt="plain"
+                    )
+                    try:
+                        target_path = ask_optional(
+                            "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
+                        )
+                    except BackCommand:
+                        target_path = None
+                    if target_path:
+                        try:
+                            with open(target_path, "w", encoding="utf-8") as handle:
+                                handle.write(content)
+                        except OSError as exc:
+                            print(f"Impossible d'ecrire le fichier: {exc}")
+                        else:
+                            print(f"Conversation exportee vers {target_path}.")
+                    else:
+                        print("\n--- Export conversation ---")
+                        print(content)
+                        print("--- Fin de l'export ---")
+
+                elif choice == 2:
+                    if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(session.current_user_id, conv_id):
+                        print("Vous etes le seul administrateur. Vous ne pouvez pas quitter la conversation sans transferer les droits d'administration.")
+                        return False
+                    if ask_yes_no("Confirmer que vous voulez quitter la conversation ?") == True:
+                        collab_service.remove_collaboration(
+                            conv_id, session.current_user_id
+                        )
+                    print("Vous avez quitte la conversation. Retour a l'espace utilisateur.")
+                    from cli.pages import user
+
+                    user.page_user_home()
+                    return True
+
+                elif choice == 3:
+                    conv_service.archive_conversation(conv_id, session.current_user_id)
+                    print("Conversation archivee. Retour a l'espace utilisateur.")
+                    from cli.pages import user
+
+                    user.page_user_home()
+                    return True
             except Exception as exc:
                 print(f"Action impossible: {exc}")
             return False
