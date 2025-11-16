@@ -76,9 +76,46 @@ class SearchService:
 
     def search_conversations_by_keyword(self, user_id: int, keyword: str) -> List[Conversation]:
         """Recherche des conversations par mot-cle dans le titre."""
-        if not keyword:
+        if not keyword or not keyword.strip():
             return []
-        return self.conversation_dao.search_conversations_by_title(user_id, keyword)
+        keyword = keyword.strip()
+        ordered: List[Conversation] = []
+        seen_ids = set()
+
+        title_matches = self.conversation_dao.search_conversations_by_title(
+            user_id, keyword
+        )
+        for conv in title_matches or []:
+            conv_id = getattr(conv, "id_conversation", None)
+            if conv_id is None or conv_id in seen_ids:
+                continue
+            seen_ids.add(conv_id)
+            ordered.append(conv)
+
+        accessible_ids = self._get_user_accessible_conversation_ids(user_id)
+        if not accessible_ids:
+            return ordered
+
+        messages = self.message_dao.search_by_keyword(keyword, accessible_ids)
+        conv_getter = getattr(self.conversation_dao, "get_by_id", None) or getattr(
+            self.conversation_dao, "read", None
+        )
+        if not callable(conv_getter):
+            return ordered
+
+        for msg in messages or []:
+            conv_id = getattr(msg, "id_conversation", None)
+            if conv_id in seen_ids or conv_id is None:
+                continue
+            try:
+                conv = conv_getter(conv_id)
+            except Exception:
+                continue
+            if conv:
+                seen_ids.add(conv_id)
+                ordered.append(conv)
+
+        return ordered
 
     def search_conversations_by_date(
         self,

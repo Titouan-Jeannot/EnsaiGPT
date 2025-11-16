@@ -32,7 +32,6 @@ def page_send_request_invitee() -> None:
     print("\n=== Envoyer une requete en mode invite ===")
     try:
         prompt = ask_nonempty("Votre requete : ")
-        print(f"Prompt recu: {prompt}")
     except BackCommand:
         return
 
@@ -42,5 +41,5 @@ def page_send_request_invitee() -> None:
         print(f"Erreur lors de la generation de la reponse: {e}")
         return
 
-    print(f"Réponse: {response['content']}")
+    print(f"Reponse: {response['content']}")
     page_invitee()

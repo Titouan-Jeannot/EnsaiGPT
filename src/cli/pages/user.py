@@ -10,7 +10,7 @@ from cli.ui import (
     reset_session,
     ensure_logged_in,
 )
-from cli.context import user_service
+from cli.context import user_service, stats_service
 
 
 def page_user_home() -> None:
@@ -68,6 +68,14 @@ def page_account() -> None:
         print(f"Pseudo: {user.username}")
         print(f"Statut: {user.status}")
         print(f"Parametre: {user.setting_param}")
+        stats = _get_user_stats(user.id)
+        if stats:
+            print("\n--- Statistiques ---")
+            print(f"Conversations actives: {stats.get('nb_conv', 'N/A')}")
+            print(f"Messages envoyes: {stats.get('nb_messages', 'N/A')}")
+            duree = stats.get("temps_passe")
+            if duree:
+                print(f"Temps estime: {duree}")
         print("1) Modifier mes informations")
         print("2) Supprimer mon compte")
         print("9) Retour")
@@ -124,3 +132,39 @@ def update_account(user_id: int) -> None:
         print(f"Echec de mise a jour: {exc}")
         return
     print("Profil mis a jour.")
+
+
+def _get_user_stats(user_id: int) -> dict:
+    stats = {}
+    try:
+        stats["nb_conv"] = stats_service.nb_conv(user_id)
+    except Exception:
+        pass
+    try:
+        stats["nb_messages"] = stats_service.nb_messages(user_id)
+    except Exception:
+        pass
+    try:
+        delta = stats_service.temps_passe(user_id, simple_window=True)
+        if delta:
+            stats["temps_passe"] = _format_duration(delta)
+    except Exception:
+        pass
+    return stats
+
+
+def _format_duration(delta) -> str:
+    try:
+        total_seconds = int(delta.total_seconds())
+    except Exception:
+        return "0s"
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if not parts:
+        parts.append(f"{seconds}s")
+    return " ".join(parts)

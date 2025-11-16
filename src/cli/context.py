@@ -9,6 +9,8 @@ from Service.SearchService import SearchService
 from Service.CollaborationService import CollaborationService
 from Service.FeedbackService import FeedbackService
 from Service.LLMService import LLMService
+from Service.ExportService import ExportService
+from Service.StatisticsService import StatisticsService
 
 from DAO.FeedbackDAO import FeedbackDAO
 from DAO.CollaborationDAO import CollaborationDAO
@@ -44,4 +46,21 @@ llm_service = LLMService(
     conversation_dao=conversation_dao,
     user_dao=user_dao,
     # base_url / api_key : variables d'env si besoin
+)
+
+export_service = ExportService(
+    message_dao=message_dao,
+    conversation_dao=conversation_dao,
+    user_dao=user_dao,
+    collaboration_dao=collab_dao,
+    collaboration_service=collab_service,
+    user_service=user_service,
+)
+
+stats_service = StatisticsService(
+    message_dao=message_dao,
+    conversation_dao=conversation_dao,
+    collaboration_dao=collab_dao,
+    user_dao=user_dao,
+    user_service=user_service,
 )

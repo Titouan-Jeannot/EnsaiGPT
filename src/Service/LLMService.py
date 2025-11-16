@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timezone
 import os
 import requests
+import json
 
 AGENT_USER_ID = 6  # ID de l'agent en base
 
@@ -111,6 +112,7 @@ class LLMService:
         *,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        top_p: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Appelle POST /generate avec:
@@ -129,7 +131,7 @@ class LLMService:
             "history": history,
             "max_tokens": max_tokens if max_tokens is not None else self.default_max_tokens,
             "temperature": temperature if temperature is not None else self.default_temperature,
-            "top_p": 1,
+            "top_p": top_p if top_p is not None else 1,
         }
 
         # print(f"[LLMService] Payload envoyé: {payload}")
@@ -252,6 +254,129 @@ class LLMService:
         # print(f"[LLMService] History complet envoyé à l'API ({len(messages)} messages)")
         return messages
 
+    def _parse_settings_blob(self, raw: Optional[Any]) -> Dict[str, Any]:
+        """
+        voici ce que fait la methode:
+        - si raw est None, renvoie {}
+        - si raw est un dict, le renvoie tel quel
+        - si raw est une str, essaie de la parser en JSON
+        - si le JSON est un dict, le renvoie
+        - si le JSON est une str, la renvoie sous {"system_prompt": ...}
+        - si le JSON échoue, renvoie {"system_prompt": raw}
+        """
+        if raw is None:
+            return {}
+        if isinstance(raw, dict):
+            return raw
+        if not isinstance(raw, str):
+            return {}
+        text = raw.strip()
+        if not text:
+            return {}
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                return data
+            if isinstance(data, str):
+                stripped = data.strip()
+                return {"system_prompt": stripped} if stripped else {}
+        except ValueError:
+            return {"system_prompt": text}
+        return {}
+
+    def _extract_prompt(self, settings: Dict[str, Any]) -> Optional[str]:
+        for key in ("system_prompt", "prompt", "instructions"):
+            value = settings.get(key)
+            if isinstance(value, str):
+                stripped = value.strip()
+                if stripped:
+                    return stripped
+        return None
+
+    def _coerce_float(self, value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _coerce_int(self, value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        try:
+            intval = int(float(value))
+        except (TypeError, ValueError):
+            return None
+        return intval if intval > 0 else None
+
+    def _get_user_settings(self, user_id: int) -> Dict[str, Any]:
+        if not self.user_dao or user_id <= 0:
+            return {}
+        getter = getattr(self.user_dao, "get_user_by_id", None) or getattr(
+            self.user_dao, "read", None
+        )
+        if not callable(getter):
+            return {}
+        try:
+            user = getter(user_id)
+        except Exception:
+            return {}
+        if not user:
+            return {}
+        return self._parse_settings_blob(getattr(user, "setting_param", None))
+
+    def _get_conversation_settings(self, conversation_id: int) -> Dict[str, Any]:
+        if not self.conversation_dao or conversation_id <= 0:
+            return {}
+        getter = getattr(self.conversation_dao, "get_by_id", None) or getattr(
+            self.conversation_dao, "read", None
+        )
+        if not callable(getter):
+            return {}
+        try:
+            conversation = getter(conversation_id)
+        except Exception:
+            return {}
+        if not conversation:
+            return {}
+        return self._parse_settings_blob(
+            getattr(conversation, "setting_conversation", None)
+        )
+
+    def _resolve_effective_settings(
+        self, conversation_id: int, user_id: int
+    ) -> Dict[str, Any]:
+        effective: Dict[str, Any] = {}
+        conv_settings = self._get_conversation_settings(conversation_id)
+        user_settings = self._get_user_settings(user_id)
+
+        prompt = self._extract_prompt(conv_settings) or self._extract_prompt(
+            user_settings
+        )
+        if prompt:
+            effective["system_prompt"] = prompt
+
+        temperature = self._coerce_float(conv_settings.get("temperature"))
+        if temperature is None:
+            temperature = self._coerce_float(user_settings.get("temperature"))
+        if temperature is not None:
+            effective["temperature"] = temperature
+
+        max_tokens = self._coerce_int(conv_settings.get("max_tokens"))
+        if max_tokens is None:
+            max_tokens = self._coerce_int(user_settings.get("max_tokens"))
+        if max_tokens is not None:
+            effective["max_tokens"] = max_tokens
+
+        top_p = self._coerce_float(conv_settings.get("top_p"))
+        if top_p is None:
+            top_p = self._coerce_float(user_settings.get("top_p"))
+        if top_p is not None:
+            effective["top_p"] = min(1.0, max(0.0, top_p))
+
+        return effective
+
     # ------------------------------------------------------------------
     # Méthodes publiques
     # ------------------------------------------------------------------
@@ -297,10 +422,28 @@ class LLMService:
         self._validate_id("conversation_id", conversation_id)
         self._validate_id("user_id", user_id)
 
+        resolved_settings = self._resolve_effective_settings(conversation_id, user_id)
+        effective_system_prompt = (
+            system_prompt
+            or resolved_settings.get("system_prompt")
+            or self.default_system_prompt
+        )
+        temperature_override = (
+            temperature
+            if temperature is not None
+            else resolved_settings.get("temperature")
+        )
+        max_tokens_override = (
+            max_tokens
+            if max_tokens is not None
+            else resolved_settings.get("max_tokens")
+        )
+        top_p_override = resolved_settings.get("top_p")
+
         # 1) Construire le history pour l'API
         history = self._build_history_for_conversation(
             conversation_id,
-            system_prompt=system_prompt,
+            system_prompt=effective_system_prompt,
             extra_context=extra_context,
         )
 
@@ -316,8 +459,9 @@ class LLMService:
         # print("[LLMService] Envoi de la requête à l'API LLM...")
         out = self._call_llm(
             history,
-            temperature=temperature,
-            max_tokens=max_tokens,
+            temperature=temperature_override,
+            max_tokens=max_tokens_override,
+            top_p=top_p_override,
         )
         content = str(out.get("content", ""))  # texte généré
         # print(f"[LLMService] Contenu reçu (début) : {content[:200]}...")

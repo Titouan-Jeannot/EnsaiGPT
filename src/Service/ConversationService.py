@@ -37,6 +37,16 @@ class ConversationService:
         self.user_service = user_service
         self.message_service = message_service
 
+    def _ensure_admin(self, user_id: int, conversation_id: int, action: str) -> None:
+        """Vérifie que l'utilisateur est admin de la conversation."""
+        if self.collaboration_service and self.collaboration_service.is_admin(
+            user_id, conversation_id
+        ):
+            return
+        raise PermissionError(
+            f"Droits d'administration requis pour {action} cette conversation."
+        )
+
     def create_conversation(
         self, title: str, user_id: int, setting_conversation: str = "Tu es un assistant utile."
     ) -> Conversation:
@@ -129,12 +139,7 @@ class ConversationService:
 
     def delete_conversation(self, conversation_id: int, user_id: int) -> None:
         """Supprime une conversation si l'utilisateur est admin."""
-        if self.collaboration_service and not self.collaboration_service.is_admin(
-            user_id, conversation_id
-        ):
-            raise ValueError(
-                "Droits d'administration requis pour supprimer la conversation"
-            )
+        self._ensure_admin(user_id, conversation_id, "supprimer")
 
         # Vérifier les droits d'écriture
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
@@ -151,12 +156,14 @@ class ConversationService:
 
     def archive_conversation(self, conversation_id: int, user_id: int) -> None:
         """Archive une conversation (is_active = False)."""
+        self._ensure_admin(user_id, conversation_id, "archiver")
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour archiver la conversation")
         self.conversation_dao.set_active(conversation_id, False)
 
     def restore_conversation(self, conversation_id: int, user_id: int) -> None:
         """Restaure une conversation archivée."""
+        self._ensure_admin(user_id, conversation_id, "restaurer")
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour restaurer la conversation")
         self.conversation_dao.set_active(conversation_id, True)
@@ -169,6 +176,7 @@ class ConversationService:
         can_write: bool = False,
     ) -> None:
         """Partage une conversation avec un autre utilisateur."""
+        self._ensure_admin(user_id, conversation_id, "partager")
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour partager la conversation")
 

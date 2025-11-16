@@ -269,23 +269,27 @@ def test_list_collaborators(service_setup):
 
 def test_delete_collaborator(service_setup):
     service, collab_dao, _, _ = service_setup
+    collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
     collab_dao.create(Collaboration(id_conversation=10, id_user=2, role="viewer"))
 
-    assert service.delete_collaborator(10, 2) is True
-    assert service.delete_collaborator(10, 2) is False
+    assert service.delete_collaborator(10, 2, requester_id=1) is True
+    assert service.delete_collaborator(10, 2, requester_id=1) is False
 
 
 def test_change_role_missing_collaboration(service_setup):
     service, _, _, _ = service_setup
-    assert service.change_role(10, 5, "writer") is False
+    service.collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
+    with pytest.raises(ValueError):
+        service.change_role(10, 5, "writer", requester_id=1)
 
 
 def test_change_role_success(service_setup):
     service, collab_dao, _, _ = service_setup
+    collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
     collab = Collaboration(id_conversation=10, id_user=6, role="viewer")
     collab_dao.create(collab)
 
-    assert service.change_role(10, 6, "writer") is True
+    assert service.change_role(10, 6, "writer", requester_id=1) is True
     updated = collab_dao.find_by_conversation_and_user(10, 6)
     assert updated.role == "writer"
 
