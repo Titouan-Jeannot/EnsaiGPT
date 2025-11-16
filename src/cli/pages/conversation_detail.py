@@ -27,6 +27,15 @@ def page_conversation(conv_id: int) -> None:
     if not ensure_logged_in():
         return
     session.current_conv_id = conv_id
+    try:
+            is_banni = collab_service.is_banni(session.current_user_id, conv_id)
+    except Exception:
+            is_banni = False
+
+    if is_banni:
+        print("Vous etes banni de cette conversation. Vous ne pouvez pas y acceder.")
+        return
+
     while True:
         try:
             conversation = conv_service.get_conversation_by_id(
@@ -47,6 +56,21 @@ def page_conversation(conv_id: int) -> None:
         except Exception:
             is_admin = False
 
+        try:
+            is_banni = collab_service.is_banni(session.current_user_id, conv_id)
+        except Exception:
+            is_banni = False
+
+        try:
+            is_viewer = collab_service.is_viewer(session.current_user_id, conv_id)
+        except Exception:
+            is_viewer = False
+
+        try:
+            is_writer = collab_service.is_writer(session.current_user_id, conv_id)
+        except Exception:
+            is_writer = False
+
         messages = []
         try:
             messages = msg_service.get_messages_paginated(conv_id, page=1, per_page=20)
@@ -55,37 +79,57 @@ def page_conversation(conv_id: int) -> None:
         else:
             display_messages(messages)
 
-        print("1) Envoyer un message")
-        print("2) Donner un feedback")
-        print("3) Ajouter un message par ID (non disponible)")
-        print("4) Parametrage conversation (non disponible)")
-        print("5) Collaborateurs")
-        if is_admin:
-            print("6) Partager la conversation")
+        if is_banni:
+            print("Vous etes banni de cette conversation. Vous ne pouvez pas envoyer de messages.")
+            print("9) Retour")
+            print("0) Quitter")
+            try:
+                choice = ask_int("Votre choix", [9, 0])
+            except BackCommand:
+                return
+            if choice == 9:
+                return
+            elif choice == 0:
+                raise QuitCommand()
+            continue
+
+        if is_writer or is_admin:
+            print("1) Envoyer un message")
         else:
-            print("6) Partager la conversation (admin requis)")
-        print("7) Actions (archiver/exporter)")
+            print("1) Envoyer un message (accès refusé)")
+        print("2) Donner un feedback")
+        print("3) Parametrage conversation (non disponible)")
+        print("4) Collaborateurs")
+        if is_admin:
+            print("5) Partager la conversation")
+        else:
+            print("5) Partager la conversation (admin requis)")
+        print("6) Actions (archiver/exporter)")
         print("9) Retour")
         print("0) Quitter")
         try:
-            choice = ask_int("Votre choix", [1, 2, 3, 4, 5, 6, 7, 9, 0])
+            choice = ask_int("Votre choix", [1, 2, 3, 4, 5, 6, 9, 0])
         except BackCommand:
             return
         if choice == 1:
-            send_user_message(conv_id)
+            if is_writer or is_admin:
+                send_user_message(conv_id)
+            else:
+                print("Accès refusé: vous n'avez pas les droits pour envoyer un message.")
         elif choice == 2:
             feedback_pages.add_feedback_flow(conv_id, messages)
         elif choice == 3:
-            print("Fonction non implementee.")
-        elif choice == 4:
             print("Parametrage non implemente.")
-        elif choice == 5:
+        elif choice == 4:
             from cli.pages import collaboration
             collaboration.show_collaborators(conv_id)
+        elif choice == 5:
+            if is_admin:
+                from cli.pages import collaboration
+                collaboration.share_conversation(conv_id)
+            else:
+                print("Seuls les administrateurs peuvent partager la conversation.")
         elif choice == 6:
-            from cli.pages import collaboration
-            collaboration.share_conversation(conv_id)
-        elif choice == 7:
             if conversation_actions(conv_id):
                 return
         elif choice == 9:
@@ -158,51 +202,86 @@ def send_user_message(conv_id: int) -> None:
 def conversation_actions(conv_id: int) -> bool:
     try:
         if not collab_service.is_admin(session.current_user_id, conv_id):
-            print("Seuls les administrateurs peuvent acceder aux actions.")
+            print("1) Exporter la conversation")
+            print("9) Annuler")
+            try:
+                choice = ask_int("Action", [1, 9])
+            except BackCommand:
+                return False
+            if choice == 9:
+                return False
+            try:
+                if choice == 1:
+                    content = export_service.export_conversation(
+                        conv_id, session.current_user_id, fmt="plain"
+                    )
+                    try:
+                        target_path = ask_optional(
+                            "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
+                        )
+                    except BackCommand:
+                        target_path = None
+                    if target_path:
+                        try:
+                            with open(target_path, "w", encoding="utf-8") as handle:
+                                handle.write(content)
+                        except OSError as exc:
+                            print(f"Impossible d'ecrire le fichier: {exc}")
+                        else:
+                            print(f"Conversation exportee vers {target_path}.")
+                    else:
+                        print("\n--- Export conversation ---")
+                        print(content)
+                        print("--- Fin de l'export ---")
+            except Exception as exc:
+                print(f"Action impossible: {exc}")
             return False
+
+
+        else:
+            print("1) Supprimer la conversation")
+            print("2) Exporter la conversation")
+            print("9) Annuler")
+            try:
+                choice = ask_int("Action", [1, 2, 9])
+            except BackCommand:
+                return False
+            if choice == 9:
+                return False
+            try:
+                if choice == 1:
+                    conv_service.archive_conversation(conv_id, session.current_user_id)
+                    print("Conversation archivee. Retour a l'espace utilisateur.")
+                    from cli.pages import user
+
+                    user.page_user_home()
+                    return True
+                elif choice == 2:
+                    content = export_service.export_conversation(
+                        conv_id, session.current_user_id, fmt="plain"
+                    )
+                    try:
+                        target_path = ask_optional(
+                            "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
+                        )
+                    except BackCommand:
+                        target_path = None
+                    if target_path:
+                        try:
+                            with open(target_path, "w", encoding="utf-8") as handle:
+                                handle.write(content)
+                        except OSError as exc:
+                            print(f"Impossible d'ecrire le fichier: {exc}")
+                        else:
+                            print(f"Conversation exportee vers {target_path}.")
+                    else:
+                        print("\n--- Export conversation ---")
+                        print(content)
+                        print("--- Fin de l'export ---")
+            except Exception as exc:
+                print(f"Action impossible: {exc}")
+            return False
+
     except Exception:
         print("Impossible de verifier vos droits actuellement.")
         return False
-
-    print("1) Archiver la conversation")
-    print("2) Exporter la conversation")
-    print("9) Annuler")
-    try:
-        choice = ask_int("Action", [1, 2, 9])
-    except BackCommand:
-        return False
-    if choice == 9:
-        return False
-    try:
-        if choice == 1:
-            conv_service.archive_conversation(conv_id, session.current_user_id)
-            print("Conversation archivee. Retour a l'espace utilisateur.")
-            from cli.pages import user
-
-            user.page_user_home()
-            return True
-        elif choice == 2:
-            content = export_service.export_conversation(
-                conv_id, session.current_user_id, fmt="plain"
-            )
-            try:
-                target_path = ask_optional(
-                    "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
-                )
-            except BackCommand:
-                target_path = None
-            if target_path:
-                try:
-                    with open(target_path, "w", encoding="utf-8") as handle:
-                        handle.write(content)
-                except OSError as exc:
-                    print(f"Impossible d'ecrire le fichier: {exc}")
-                else:
-                    print(f"Conversation exportee vers {target_path}.")
-            else:
-                print("\n--- Export conversation ---")
-                print(content)
-                print("--- Fin de l'export ---")
-    except Exception as exc:
-        print(f"Action impossible: {exc}")
-    return False

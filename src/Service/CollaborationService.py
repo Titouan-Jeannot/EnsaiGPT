@@ -74,6 +74,12 @@ class CollaborationService(metaclass=Singleton):
         collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
         return collab is not None and collab.role.lower() == "viewer"
 
+    @log
+    def is_banni(self, user_id: int, conversation_id: int) -> bool:
+        """Vérifie si un utilisateur est banni dans une conversation."""
+        collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
+        return collab is not None and collab.role.lower() == "banni"
+
     # ------------------------------
     # Gestion des collaborations
     # ------------------------------

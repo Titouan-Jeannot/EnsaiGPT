@@ -4,6 +4,7 @@ from cli.ui import (
     ask_int,
     ask_nonempty,
     ask_yes_no,
+    ask_optional,
     BackCommand,
 )
 from cli.context import collab_service, user_service, conv_service
@@ -73,7 +74,11 @@ def show_collaborators(conv_id: int) -> None:
         is_admin = False
     if not is_admin:
         print("Seuls les administrateurs peuvent modifier les collaborateurs.")
-        return
+        try:
+            _ = ask_optional("Appuyez sur entree pour revenir en arriere.")
+            return
+        except BackCommand:
+            return
 
     try:
         manage = ask_yes_no("Modifier un collaborateur ?")
@@ -98,6 +103,12 @@ def show_collaborators(conv_id: int) -> None:
         except BackCommand:
             return
         try:
+            if target_user == session.current_user_id:
+                print("Vous ne pouvez pas changer votre propre role.")
+                return
+            if new_role not in {"admin", "writer", "viewer", "banni"}:
+                print("Role invalide. Veuillez choisir parmi admin, writer, viewer, banni.")
+                return
             updated = collab_service.change_role(
                 conv_id, target_user, new_role, session.current_user_id
             )
@@ -142,15 +153,24 @@ def share_conversation(conv_id: int) -> None:
     print(f"Token lecture : {conversation.token_viewer}")
     print(f"Token ecriture : {conversation.token_writter}")
     try:
-        target_user = ask_int("ID utilisateur a inviter", [])
-        can_write = ask_yes_no("Autoriser l'ecriture ?")
+        invite_user_id_yn = ask_nonempty("Voule vous inviter un utilisateur par id ? (y/n)") # ajustement : on aurait pu utiliser ask_yes_no mais pour garder la logique existante on reste comme ca
+        if invite_user_id_yn.lower() in {"y", "yes", "o", "oui"}:
+            target_user = ask_int("ID utilisateur a inviter", [])
+            can_write = ask_yes_no("Autoriser l'ecriture ?")
     except BackCommand:
         return
-    try:
-        conv_service.share_conversation(
-            conv_id, session.current_user_id, target_user, can_write
-        )
-    except Exception as exc:
-        print(f"Partage impossible: {exc}")
-        return
-    print("Conversation partagee.")
+    if invite_user_id_yn.lower() in {"y", "yes", "o", "oui"}:
+        try:
+            if target_user == session.current_user_id:
+                print("Vous ne pouvez pas vous inviter vous-meme.")
+                return
+            if target_user == 6:
+                print("Vous ne pouvez pas inviter cet utilisateur.")
+                return
+            conv_service.share_conversation(
+                conv_id, session.current_user_id, target_user, can_write
+            )
+        except Exception as exc:
+            print(f"Partage impossible: {exc}")
+            return
+        print("Conversation partagee.")
