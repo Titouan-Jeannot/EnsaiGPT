@@ -11,7 +11,7 @@ class Collaboration:
     id_user : int
         Identifiant de l’utilisateur.
     role : str
-        Rôle de l’utilisateur : 'admin', 'viewer', 'writer', 'banned' ou 'reader'.
+        Rôle de l’utilisateur : 'admin', 'viewer', 'writer' ou 'banni'.
     """
 
     def __init__(
@@ -33,7 +33,7 @@ class Collaboration:
         id_user : int
             Identifiant de l'utilisateur.
         role : str
-            Rôle ('admin', 'viewer', 'writer', 'banned', 'reader').
+            Rôle ('admin', 'viewer', 'writer', 'banni').
 
         Raises
         ------
@@ -57,9 +57,9 @@ class Collaboration:
             raise ValueError("role ne doit pas contenir d'espaces ou de caractères blancs")
 
         role_norm = role.lower()
-        allowed_roles = {"admin", "viewer", "writer", "banned", "reader"}
+        allowed_roles = {"admin", "viewer", "writer", "banni"}
         if role_norm not in allowed_roles:
-            raise ValueError("role doit être 'admin', 'viewer', 'writer', 'banned' ou 'reader'")
+            raise ValueError("role doit être 'admin', 'viewer', 'writer' ou 'banni'")
 
         # --- Assignations ---
         self.id_collaboration = id_collaboration

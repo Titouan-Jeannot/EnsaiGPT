@@ -34,7 +34,7 @@ class SearchService:
     def _get_user_accessible_conversation_ids(self, user_id: int) -> List[int]:
         """
         Récupère les IDs des conversations auxquelles l'utilisateur a accès.
-        Autorise admin/writer/viewer/reader, exclut banned.
+        Autorise admin/writer/viewer, exclut banni.
         """
         collaborations: List[Collaboration] = self.collaboration_dao.find_by_user(user_id)
 

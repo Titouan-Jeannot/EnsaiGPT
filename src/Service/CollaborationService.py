@@ -56,7 +56,7 @@ class CollaborationService(metaclass=Singleton):
                 raise ValueError(f"Conversation {conversation_id} introuvable.")
 
             # Vérifier que le rôle est valide
-            if role.lower() not in {"admin", "writer", "viewer", "banned"}:
+            if role.lower() not in {"admin", "writer", "viewer", "banni"}:
                 raise ValueError("Rôle invalide.")
 
             # Vérifier qu’il n’existe pas déjà une collaboration pour cette paire

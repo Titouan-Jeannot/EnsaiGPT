@@ -1,1 +1,0 @@
-AGENT_USER_ID = 6

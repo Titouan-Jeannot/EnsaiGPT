@@ -78,7 +78,7 @@ def show_collaborators(conv_id: int) -> None:
     from cli.context import collab_service as cs
     if choice == 1:
         try:
-            new_role = ask_nonempty("Nouveau role (admin/writer/viewer/banned)")
+            new_role = ask_nonempty("Nouveau role (admin/writer/viewer/banni)")
         except BackCommand:
             return
         try:

@@ -103,23 +103,23 @@ class AuthService:
         En cas d'échec, enregistre le timestamp du dernier échec et impose un petit délai avant nouveau essai.
         """
         if not mail or not password:
-            print("1")
+            # print("1")
             return None
         if not self.EMAIL_RE.match(mail):
-            print("2")
+            # print("2")
             return None
 
         # blocage si délai non écoulé depuis dernier échec pour cet email
         last = self._last_failed.get(mail)
         now = datetime.now(timezone.utc)
         if last and (now - last).total_seconds() < self.RETRY_DELAY_SECONDS:
-            print("3")
+            # print("3")
             return None
 
         user = self._get_user_by_mail(mail)
         if not user:
             # enregistrer timestamp d'échec et retourner None
-            print("4")
+            # print("4")
             self._register_failed(mail)
             return None
 
@@ -128,17 +128,17 @@ class AuthService:
         stored_hash = getattr(user, "password_hash", None)
         stored_salt = getattr(user, "salt", None)
         if not stored_hash or not stored_salt:
-            print("5")
+            # print("5")
             self._register_failed(mail)
             return None
 
         if self.verify_mdp(password, stored_hash, stored_salt):
-            print("6")
+            # print("6")
             # succès -> effacer timestamp d'échec
             user.last_login = now
             self.user_dao.update(user)
             if mail in self._last_failed:
-                print("7")
+                # print("7")
                 del self._last_failed[mail]
             return user
 

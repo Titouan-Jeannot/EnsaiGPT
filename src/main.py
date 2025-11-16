@@ -1,4 +1,4 @@
-# src/main.py
+
 
 from cli.ui import QuitCommand
 from cli.pages.home import page_home

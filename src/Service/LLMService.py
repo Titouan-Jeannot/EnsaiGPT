@@ -72,7 +72,7 @@ class LLMService:
         base_url: Optional[str] = None,
         conversation_dao: Optional["ConversationDAO"] = None,
         user_dao: Optional["UserDAO"] = None,
-        banned_service: Optional[Any] = None,
+       # banned_service: Optional[Any] = None,
         default_system_prompt: str = "Tu es un assistant IA utile.",
         default_temperature: float = 0.7,
         default_max_tokens: int = 512,
@@ -81,7 +81,7 @@ class LLMService:
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.user_dao = user_dao
-        self.banned_service = banned_service
+       # self.banned_service = banned_service
 
         self.default_system_prompt = default_system_prompt
         self.default_temperature = default_temperature
@@ -104,33 +104,6 @@ class LLMService:
         if not isinstance(value, int) or value <= 0:
             raise ValueError(f"{name} invalide: {value}")
 
-    def _ensure_not_banned(self, stage: str, text: str) -> None:
-        """
-        Vérification très simple via banned_service si fourni.
-        Ne change rien au payload, juste lève une erreur si contenu interdit.
-        """
-        if not self.banned_service or not text:
-            return
-
-        for attr in ("contains_banned", "has_banned", "detect", "validate"):
-            fn = getattr(self.banned_service, attr, None)
-            if callable(fn):
-                try:
-                    res = fn(text)
-                    # bool simple
-                    if isinstance(res, bool) and res:
-                        raise ValueError(f"Contenu interdit détecté ({stage})")
-                    # dict style {"ok": False, "reason": "..."}
-                    if isinstance(res, dict) and not res.get("ok", True):
-                        raise ValueError(
-                            f"Contenu interdit détecté ({stage}): {res.get('reason', '')}"
-                        )
-                except ValueError:
-                    raise
-                except Exception:
-                    # on n'interrompt pas si erreur interne du banned_service
-                    pass
-                return
 
     def _call_llm(
         self,
@@ -150,7 +123,7 @@ class LLMService:
         et renvoie un dict {"content": str, "usage": dict}
         """
         url = f"{self.base_url}/generate"
-        print(f"[LLMService] Appel API POST {url}")
+        # print(f"[LLMService] Appel API POST {url}")
 
         payload: Dict[str, Any] = {
             "history": history,
@@ -159,7 +132,7 @@ class LLMService:
             "top_p": 1,
         }
 
-        print(f"[LLMService] Payload envoyé: {payload}")
+        # print(f"[LLMService] Payload envoyé: {payload}")
 
         headers = {
             "accept": "application/json",
@@ -175,7 +148,7 @@ class LLMService:
             )
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            print(f"[LLMService] HTTP ERROR {resp.status_code}: {resp.text}")
+            # print(f"[LLMService] HTTP ERROR {resp.status_code}: {resp.text}")
             raise RuntimeError(
                 f"[LLM] HTTP {resp.status_code} sur {url} – corps: {resp.text[:800]}"
             ) from e
@@ -187,10 +160,10 @@ class LLMService:
         try:
             data = resp.json()
         except ValueError as e:
-            print(f"[LLMService] Réponse non JSON: {resp.text[:800]}")
+            # print(f"[LLMService] Réponse non JSON: {resp.text[:800]}")
             raise RuntimeError(f"[LLM] Réponse non-JSON depuis {url}") from e
 
-        print(f"[LLMService] Réponse brute: {data}")
+        # print(f"[LLMService] Réponse brute: {data}")
 
         # On suit exactement le format de l'exemple:
         # data["choices"][0]["message"]["content"]
@@ -228,7 +201,7 @@ class LLMService:
             {"role": "system", "content": sys},
             {"role": "user", "content": user_content},
         ]
-        print(f"[LLMService] History pour simple_complete: {history}")
+        # print(f"[LLMService] History pour simple_complete: {history}")
         return history
 
     def _build_history_for_conversation(
@@ -248,7 +221,7 @@ class LLMService:
             )
 
         history_messages: List[Message] = list(get_msgs(conversation_id))
-        print(f"[LLMService] Historique récupéré: {len(history_messages)} messages")
+        # print(f"[LLMService] Historique récupéré: {len(history_messages)} messages")
 
         # Normalement déjà trié par timestamp dans le DAO, mais on sécurise
         try:
@@ -276,7 +249,7 @@ class LLMService:
                 {"role": "system", "content": f"Contexte additionnel:\n{extra_context}"}
             )
 
-        print(f"[LLMService] History complet envoyé à l'API ({len(messages)} messages)")
+        # print(f"[LLMService] History complet envoyé à l'API ({len(messages)} messages)")
         return messages
 
     # ------------------------------------------------------------------
@@ -296,7 +269,7 @@ class LLMService:
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("prompt vide")
 
-        self._ensure_not_banned("input", prompt)
+        # self._ensure_not_banned("input", prompt)
         history = self._build_history_for_prompt(prompt, system_prompt=system_prompt)
         out = self._call_llm(
             history,
@@ -304,7 +277,7 @@ class LLMService:
             max_tokens=max_tokens,
         )
         content = str(out.get("content", ""))
-        self._ensure_not_banned("output", content)
+        # self._ensure_not_banned("output", content)
         return content
 
     def generate_agent_reply(
@@ -332,20 +305,23 @@ class LLMService:
         )
 
         # 2) Vérif banned côté input
+        """
         for msg in history:
             if msg.get("role") in ("user", "system"):
                 self._ensure_not_banned("input", msg.get("content", ""))
 
+        """
+
         # 3) Appel API
-        print("[LLMService] Envoi de la requête à l'API LLM...")
+        # print("[LLMService] Envoi de la requête à l'API LLM...")
         out = self._call_llm(
             history,
             temperature=temperature,
             max_tokens=max_tokens,
         )
         content = str(out.get("content", ""))  # texte généré
-        print(f"[LLMService] Contenu reçu (début) : {content[:200]}...")
-        self._ensure_not_banned("output", content)
+        # print(f"[LLMService] Contenu reçu (début) : {content[:200]}...")
+        # self._ensure_not_banned("output", content)
 
         # 4) Persister la réponse agent
         now = datetime.now(timezone.utc)
@@ -375,7 +351,7 @@ class LLMService:
         default_max_tokens_invite = 512
         timeout_invite = 20.0
         url = f"https://ensai-gpt-109912438483.europe-west4.run.app/generate"
-        print(f"[LLMService] Appel API POST inivitee {url}")
+        # print(f"[LLMService] Appel API POST inivitee {url}")
 
         history_invitee = [
     {
@@ -395,7 +371,7 @@ class LLMService:
             "top_p": 1,
         }
 
-        print(f"[LLMService] Payload envoyé invitee: {payload}")
+        # print(f"[LLMService] Payload envoyé invitee: {payload}")
 
         headers = {
             "accept": "application/json",
@@ -411,7 +387,7 @@ class LLMService:
             )
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            print(f"[LLMService] HTTP ERROR invitee {resp.status_code}: {resp.text}")
+            # print(f"[LLMService] HTTP ERROR invitee {resp.status_code}: {resp.text}")
             raise RuntimeError(
                 f"[LLM] HTTP invitee {resp.status_code} sur {url} – corps: {resp.text[:800]}"
             ) from e
@@ -423,10 +399,10 @@ class LLMService:
         try:
             data = resp.json()
         except ValueError as e:
-            print(f"[LLMService] Réponse non JSON invitee : {resp.text[:800]}")
+            # print(f"[LLMService] Réponse non JSON invitee : {resp.text[:800]}")
             raise RuntimeError(f"[LLM] Réponse non-JSON depuis invitee {url}") from e
 
-        print(f"[LLMService] Réponse brute invitee: {data}")
+        # print(f"[LLMService] Réponse brute invitee: {data}")
 
         # On suit exactement le format de l'exemple:
         # data["choices"][0]["message"]["content"]
@@ -452,3 +428,33 @@ class LLMService:
             "content": content,
             "usage": usage,
         }
+
+
+
+
+"""
+    def _ensure_not_banned(self, stage: str, text: str) -> None:
+
+        if not self.banned_service or not text:
+            return
+
+        for attr in ("contains_banned", "has_banned", "detect", "validate"):
+            fn = getattr(self.banned_service, attr, None)
+            if callable(fn):
+                try:
+                    res = fn(text)
+                    # bool simple
+                    if isinstance(res, bool) and res:
+                        raise ValueError(f"Contenu interdit détecté ({stage})")
+                    # dict style {"ok": False, "reason": "..."}
+                    if isinstance(res, dict) and not res.get("ok", True):
+                        raise ValueError(
+                            f"Contenu interdit détecté ({stage}): {res.get('reason', '')}"
+                        )
+                except ValueError:
+                    raise
+                except Exception:
+                    # on n'interrompt pas si erreur interne du banned_service
+                    pass
+                return
+"""
