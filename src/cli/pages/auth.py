@@ -3,7 +3,6 @@
 from cli.ui import (
     ask_nonempty,
     ask_optional,
-    ask_int,
     ask_yes_no,
     BackCommand,
     QuitCommand,
@@ -12,6 +11,9 @@ from cli.ui import (
     ensure_logged_in,
 )
 from cli.context import user_service
+
+import questionary
+from questionary import Choice, Separator
 
 
 def page_login() -> None:
@@ -35,18 +37,18 @@ def page_login() -> None:
     session.current_username = getattr(user, "username", "Utilisateur")
     session.current_conv_id = None
     session.is_guest = False
-    print(f"Connexion reussie. Bonjour {session.current_username}!")
+    print(f"✅ Connexion réussie. Bonjour {session.current_username} !")
 
     from cli.pages import user as user_pages
     user_pages.page_user_home()
 
 
 def page_register() -> None:
-    print("\n=== Creation de compte ===")
+    print("\n=== Création de compte ===")
     try:
         username = ask_nonempty("Nom d'utilisateur")
         nom = ask_optional("Nom (optionnel)")
-        prenom = ask_optional("Prenom (optionnel)")
+        prenom = ask_optional("Prénom (optionnel)")
         mail = ask_nonempty("Email")
         password = ask_nonempty("Mot de passe")
     except BackCommand:
@@ -60,26 +62,48 @@ def page_register() -> None:
             prenom=prenom or "",
         )
     except Exception as exc:
-        print(f"Echec de creation: {exc}")
+        print(f"❌ Échec de création : {exc}")
         return
-    print("Compte cree avec succes. Vous pouvez maintenant vous connecter.")
+    print("✅ Compte créé avec succès. Vous pouvez maintenant vous connecter.")
 
 
 def page_guest_home() -> None:
-    print("\n=== Mode invite ===")
-    print("Certaines actions exigent un compte utilisateur.")
-    print("1) Rejoindre une collaboration")
-    print("9) Retour accueil")
-    print("0) Quitter")
-    try:
-        choice = ask_int("Votre choix", [1, 9, 0])
-    except BackCommand:
-        return
-    if choice == 1:
-        from cli.pages import collaboration
-        collaboration.page_join_collab()
-    elif choice == 9:
-        session.is_guest = False
-        return
-    elif choice == 0:
-        raise QuitCommand()
+    """
+    Page d'accueil du mode invité, avec menu déroulant (flèches + Entrée)
+    au lieu d'un simple choix numérique.
+    """
+
+    session.is_guest = True
+
+    while True:
+        action = questionary.select(
+            "\n=== Mode invité ===\nCertaines actions exigent un compte utilisateur.",
+            choices=[
+                Choice("🤝 Rejoindre une collaboration", "join_collab"),
+                Separator(),
+                Choice("⬅️ Retour à l'accueil", "back_home"),
+                Choice("❌ Quitter", "quit"),
+            ],
+        ).ask()
+
+        # Si l'utilisateur annule (Ctrl+C, fermeture du prompt)
+        if action is None:
+            # On considère que ça équivaut à un retour à l'accueil
+            session.is_guest = False
+            return
+
+        if action == "join_collab":
+            from cli.pages import collaboration
+
+            try:
+                collaboration.page_join_collab()
+            except BackCommand:
+                # On revient simplement au menu invité
+                continue
+
+        elif action == "back_home":
+            session.is_guest = False
+            return
+
+        elif action == "quit":
+            raise QuitCommand()
