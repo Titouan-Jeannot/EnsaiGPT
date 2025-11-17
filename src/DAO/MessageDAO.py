@@ -162,6 +162,7 @@ class MessageDAO:
     def search_by_keyword(self, keyword: str, conversation_ids: List[int]) -> List[Message]:
         """
         Recherche des messages contenant un mot-clé, limités aux conversations spécifiées.
+        Ne renvoie que les messages des conversations actives.
 
         Parameters
         ----------
@@ -179,8 +180,10 @@ class MessageDAO:
 
         query = """
         SELECT * FROM message
-        WHERE id_conversation IN %(ids)s
+        JOIN conversation c ON c.id_conversation = message.id_conversation
+        WHERE c.id_conversation IN %(ids)s
           AND message ILIKE %(kw)s
+          AND c.is_active = TRUE
         ORDER BY "timestamp" DESC;
         """
         messages: List[Message] = []

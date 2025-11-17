@@ -75,7 +75,7 @@ class SearchService:
     # ------------------------------------------------------------------ #
 
     def search_conversations_by_keyword(self, user_id: int, keyword: str) -> List[Conversation]:
-        """Recherche des conversations par mot-cle dans le titre."""
+        """Recherche des conversations par mot-cle dans le titre. Et ne selectionne que les conversatioin active de l'utilisateur."""
         if not keyword or not keyword.strip():
             return []
         keyword = keyword.strip()

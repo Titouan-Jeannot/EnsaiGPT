@@ -153,6 +153,7 @@ class ConversationDAO(metaclass=Singleton):
               JOIN collaboration col ON col.id_conversation = c.id_conversation
              WHERE col.id_user = %(user_id)s
                AND DATE(c.created_at) = %(target_date)s
+                AND c.is_active = TRUE
              ORDER BY c.created_at DESC;
         """
         day: date = target_date.date()
@@ -160,13 +161,14 @@ class ConversationDAO(metaclass=Singleton):
 
     @log
     def search_conversations_by_title(self, user_id: int, title: str) -> List[Conversation]:
-        """Recherche par titre (ILIKE, insensible à la casse)."""
+        """Recherche par titre (ILIKE, insensible à la casse). Renvoie les conversations actives de l'utilisateur."""
         query = """
             SELECT c.*
               FROM conversation c
               JOIN collaboration col ON col.id_conversation = c.id_conversation
              WHERE col.id_user = %(user_id)s
                AND c.titre ILIKE %(title)s
+               AND c.is_active = TRUE
              ORDER BY c.created_at DESC;
         """
         return self._fetch_many(query, {"user_id": user_id, "title": f"%{title}%"})

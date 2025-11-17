@@ -42,7 +42,7 @@ def page_search_conversations() -> None:
         return
     while True:
         print("\n--- Recherche de conversations ---")
-        print("1) Par mot cle (titre)")
+        print("1) Par mot clé")
         print("2) Par date de creation")
         print("3) Lister toutes mes conversations")
         print("9) Retour")
@@ -55,7 +55,7 @@ def page_search_conversations() -> None:
         conversations: List = []
         if choice == 1:
             try:
-                keyword = ask_nonempty("Mot cle")
+                keyword = ask_nonempty("Mot clé :")
             except BackCommand:
                 continue
             try:
