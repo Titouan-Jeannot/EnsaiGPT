@@ -236,3 +236,19 @@ class ConversationDAO(metaclass=Singleton):
             DO UPDATE SET role = EXCLUDED.role;
         """
         self._execute(query, {"id_conversation": conversation_id, "id_user": user_id, "role": role})
+
+    @log
+    def get_prompts_conversation(self, conversation_id: int) -> Optional[str]:
+        """Renvoie les paramètres (settings_conversation) d’une conversation."""
+        query = """
+            SELECT settings_conversation
+              FROM conversation
+             WHERE id_conversation = %(id_conversation)s;
+        """
+        with DBConnection().connection as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, {"id_conversation": conversation_id})
+                row = cursor.fetchone()
+        if row:
+            return row.get("settings_conversation")
+        return None

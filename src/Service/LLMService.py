@@ -73,7 +73,6 @@ class LLMService:
         base_url: Optional[str] = None,
         conversation_dao: Optional["ConversationDAO"] = None,
         user_dao: Optional["UserDAO"] = None,
-       # banned_service: Optional[Any] = None,
         default_system_prompt: str = "Tu es un assistant IA utile.",
         default_temperature: float = 0.7,
         default_max_tokens: int = 512,
@@ -82,7 +81,6 @@ class LLMService:
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.user_dao = user_dao
-       # self.banned_service = banned_service
 
         self.default_system_prompt = default_system_prompt
         self.default_temperature = default_temperature
@@ -96,7 +94,11 @@ class LLMService:
             or "https://ensai-gpt-109912438483.europe-west4.run.app"
         ).rstrip("/")
 
-
+        # Conserver les valeurs "override" comme attributs d'instance
+        # (afin qu'elles soient accessibles depuis generate_agent_reply et autres méthodes)
+        self.temperature_override = 0.7
+        self.top_p_override = 1.0
+        self.max_tokens_override = 150
 
     # ------------------------------------------------------------------
     # Helpers
@@ -192,26 +194,11 @@ class LLMService:
             "usage": usage,
         }
 
-    def _build_history_for_prompt(
-        self,
-        user_content: str,
-        *,
-        system_prompt: Optional[str] = None,
-    ) -> List[Dict[str, str]]:
-        sys = system_prompt or self.default_system_prompt
-        history = [
-            {"role": "system", "content": sys},
-            {"role": "user", "content": user_content},
-        ]
-        # print(f"[LLMService] History pour simple_complete: {history}")
-        return history
 
     def _build_history_for_conversation(
         self,
         conversation_id: int,
-        *,
-        system_prompt: Optional[str] = None,
-        extra_context: Optional[str] = None,
+        user_id: int
     ) -> List[Dict[str, str]]:
         """
         Construit le history pour l'API à partir des messages en BDD.
@@ -231,7 +218,31 @@ class LLMService:
         except Exception:
             pass
 
-        sys = system_prompt or self.default_system_prompt
+
+         # On récupère les prompts personnalisés (priorité : prompt de conversation > prompt user > default)
+        prompt_conv = ""
+        prompt_user = ""
+        # defense : conversation_dao et user_dao peuvent être None ou mal comporter
+        if getattr(self, "conversation_dao", None) and hasattr(self.conversation_dao, "get_prompts_conversation"):
+            try:
+                prompt_conv = self.conversation_dao.get_prompts_conversation(conversation_id) or ""
+            except Exception:
+                prompt_conv = ""
+        if getattr(self, "user_dao", None) and hasattr(self.user_dao, "get_prompt_user"):
+            try:
+                prompt_user = self.user_dao.get_prompt_user(user_id) or ""
+            except Exception:
+                prompt_user = ""
+
+        if prompt_conv:
+            effective_system_prompt = prompt_conv
+        elif prompt_user:
+            effective_system_prompt = prompt_user
+        else:
+            # utiliser l'attribut d'instance défini dans __init__
+            effective_system_prompt = self.default_system_prompt
+
+        sys = effective_system_prompt
         messages: List[Dict[str, str]] = [{"role": "system", "content": sys}]
 
         for m in history_messages:
@@ -246,174 +257,22 @@ class LLMService:
 
             messages.append({"role": role, "content": content})
 
-        if extra_context:
-            messages.append(
-                {"role": "system", "content": f"Contexte additionnel:\n{extra_context}"}
-            )
+
 
         # print(f"[LLMService] History complet envoyé à l'API ({len(messages)} messages)")
         return messages
 
-    def _parse_settings_blob(self, raw: Optional[Any]) -> Dict[str, Any]:
-        """
-        voici ce que fait la methode:
-        - si raw est None, renvoie {}
-        - si raw est un dict, le renvoie tel quel
-        - si raw est une str, essaie de la parser en JSON
-        - si le JSON est un dict, le renvoie
-        - si le JSON est une str, la renvoie sous {"system_prompt": ...}
-        - si le JSON échoue, renvoie {"system_prompt": raw}
-        """
-        if raw is None:
-            return {}
-        if isinstance(raw, dict):
-            return raw
-        if not isinstance(raw, str):
-            return {}
-        text = raw.strip()
-        if not text:
-            return {}
-        try:
-            data = json.loads(text)
-            if isinstance(data, dict):
-                return data
-            if isinstance(data, str):
-                stripped = data.strip()
-                return {"system_prompt": stripped} if stripped else {}
-        except ValueError:
-            return {"system_prompt": text}
-        return {}
 
-    def _extract_prompt(self, settings: Dict[str, Any]) -> Optional[str]:
-        for key in ("system_prompt", "prompt", "instructions"):
-            value = settings.get(key)
-            if isinstance(value, str):
-                stripped = value.strip()
-                if stripped:
-                    return stripped
-        return None
-
-    def _coerce_float(self, value: Any) -> Optional[float]:
-        if value is None:
-            return None
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
-
-    def _coerce_int(self, value: Any) -> Optional[int]:
-        if value is None:
-            return None
-        try:
-            intval = int(float(value))
-        except (TypeError, ValueError):
-            return None
-        return intval if intval > 0 else None
-
-    def _get_user_settings(self, user_id: int) -> Dict[str, Any]:
-        if not self.user_dao or user_id <= 0:
-            return {}
-        getter = getattr(self.user_dao, "get_user_by_id", None) or getattr(
-            self.user_dao, "read", None
-        )
-        if not callable(getter):
-            return {}
-        try:
-            user = getter(user_id)
-        except Exception:
-            return {}
-        if not user:
-            return {}
-        return self._parse_settings_blob(getattr(user, "setting_param", None))
-
-    def _get_conversation_settings(self, conversation_id: int) -> Dict[str, Any]:
-        if not self.conversation_dao or conversation_id <= 0:
-            return {}
-        getter = getattr(self.conversation_dao, "get_by_id", None) or getattr(
-            self.conversation_dao, "read", None
-        )
-        if not callable(getter):
-            return {}
-        try:
-            conversation = getter(conversation_id)
-        except Exception:
-            return {}
-        if not conversation:
-            return {}
-        return self._parse_settings_blob(
-            getattr(conversation, "setting_conversation", None)
-        )
-
-    def _resolve_effective_settings(
-        self, conversation_id: int, user_id: int
-    ) -> Dict[str, Any]:
-        effective: Dict[str, Any] = {}
-        conv_settings = self._get_conversation_settings(conversation_id)
-        user_settings = self._get_user_settings(user_id)
-
-        prompt = self._extract_prompt(conv_settings) or self._extract_prompt(
-            user_settings
-        )
-        if prompt:
-            effective["system_prompt"] = prompt
-
-        temperature = self._coerce_float(conv_settings.get("temperature"))
-        if temperature is None:
-            temperature = self._coerce_float(user_settings.get("temperature"))
-        if temperature is not None:
-            effective["temperature"] = temperature
-
-        max_tokens = self._coerce_int(conv_settings.get("max_tokens"))
-        if max_tokens is None:
-            max_tokens = self._coerce_int(user_settings.get("max_tokens"))
-        if max_tokens is not None:
-            effective["max_tokens"] = max_tokens
-
-        top_p = self._coerce_float(conv_settings.get("top_p"))
-        if top_p is None:
-            top_p = self._coerce_float(user_settings.get("top_p"))
-        if top_p is not None:
-            effective["top_p"] = min(1.0, max(0.0, top_p))
-
-        return effective
 
     # ------------------------------------------------------------------
     # Méthodes publiques
     # ------------------------------------------------------------------
-    def simple_complete(
-        self,
-        prompt: str,
-        *,
-        system_prompt: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-    ) -> str:
-        """
-        Appel simple sans persistance en base.
-        """
-        if not isinstance(prompt, str) or not prompt.strip():
-            raise ValueError("prompt vide")
 
-        # self._ensure_not_banned("input", prompt)
-        history = self._build_history_for_prompt(prompt, system_prompt=system_prompt)
-        out = self._call_llm(
-            history,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        content = str(out.get("content", ""))
-        # self._ensure_not_banned("output", content)
-        return content
 
     def generate_agent_reply(
         self,
         conversation_id: int,
-        user_id: int,
-        *,
-        system_prompt: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        extra_context: Optional[str] = None,
+        user_id: int
     ) -> Message:
         """
         Utilise l'historique complet de la conversation, envoie à l'API,
@@ -422,50 +281,25 @@ class LLMService:
         self._validate_id("conversation_id", conversation_id)
         self._validate_id("user_id", user_id)
 
-        resolved_settings = self._resolve_effective_settings(conversation_id, user_id)
-        effective_system_prompt = (
-            system_prompt
-            or resolved_settings.get("system_prompt")
-            or self.default_system_prompt
-        )
-        temperature_override = (
-            temperature
-            if temperature is not None
-            else resolved_settings.get("temperature")
-        )
-        max_tokens_override = (
-            max_tokens
-            if max_tokens is not None
-            else resolved_settings.get("max_tokens")
-        )
-        top_p_override = resolved_settings.get("top_p")
+
+
+
 
         # 1) Construire le history pour l'API
         history = self._build_history_for_conversation(
             conversation_id,
-            system_prompt=effective_system_prompt,
-            extra_context=extra_context,
+            user_id
         )
 
-        # 2) Vérif banned côté input
-        """
-        for msg in history:
-            if msg.get("role") in ("user", "system"):
-                self._ensure_not_banned("input", msg.get("content", ""))
 
-        """
-
-        # 3) Appel API
-        # print("[LLMService] Envoi de la requête à l'API LLM...")
+        # Appel API en utilisant les overrides stockés sur l'instance
         out = self._call_llm(
             history,
-            temperature=temperature_override,
-            max_tokens=max_tokens_override,
-            top_p=top_p_override,
+            temperature=self.temperature_override,
+            max_tokens=self.max_tokens_override,
+            top_p=self.top_p_override,
         )
         content = str(out.get("content", ""))  # texte généré
-        # print(f"[LLMService] Contenu reçu (début) : {content[:200]}...")
-        # self._ensure_not_banned("output", content)
 
         # 4) Persister la réponse agent
         now = datetime.now(timezone.utc)
@@ -486,7 +320,7 @@ class LLMService:
         return created
 
     @staticmethod
-    def requete_invitee(prompt: str) -> str:
+    def requete_invitee(prompt: str) -> Dict[str, Any]:
         """
         Méthode statique pour des requêtes invitées simples.
         """
@@ -572,33 +406,3 @@ class LLMService:
             "content": content,
             "usage": usage,
         }
-
-
-
-
-"""
-    def _ensure_not_banned(self, stage: str, text: str) -> None:
-
-        if not self.banned_service or not text:
-            return
-
-        for attr in ("contains_banned", "has_banned", "detect", "validate"):
-            fn = getattr(self.banned_service, attr, None)
-            if callable(fn):
-                try:
-                    res = fn(text)
-                    # bool simple
-                    if isinstance(res, bool) and res:
-                        raise ValueError(f"Contenu interdit détecté ({stage})")
-                    # dict style {"ok": False, "reason": "..."}
-                    if isinstance(res, dict) and not res.get("ok", True):
-                        raise ValueError(
-                            f"Contenu interdit détecté ({stage}): {res.get('reason', '')}"
-                        )
-                except ValueError:
-                    raise
-                except Exception:
-                    # on n'interrompt pas si erreur interne du banned_service
-                    pass
-                return
-"""

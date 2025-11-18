@@ -188,6 +188,17 @@ class UserDAO:
                 cur.execute(query, {"id": user_id})
             conn.commit()
 
+    def get_prompt_user(self, user_id: int) -> str:
+        """Récupère le prompt personnalisé de l'utilisateur."""
+        query = "SELECT setting_param FROM users WHERE id_user = %(id)s;"
+        with DBConnection().connection as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, {"id": user_id})
+                row = cur.fetchone()
+                if row:
+                    return row[0]  # setting_param
+                return None
+
 
 '''import psycopg2
 from psycopg2.extras import RealDictCursor
