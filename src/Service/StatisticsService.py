@@ -109,31 +109,6 @@ class StatisticsService:
                 logging.exception("nb_messages: échec méthode count_messages_by_user")
 
 
-    def nb_message_conv(self, conversation_id: int) -> int:
-        """
-        Calcule le nombre de messages dans une conversation donnée, en utilisant les DAO disponibles.
-        """
-        self._validate_id("conversation_id", conversation_id)
-
-        fn = self.message_dao.count_messages_by_conversation
-        if callable(fn):
-            try:
-                return int(fn(conversation_id))
-            except Exception:
-                logging.exception("nb_message_conv: échec méthode count_messages_by_conversation")
-
-
-    def nb_messages_de_user_par_conv(self, user_id: int, conversation_id: int) -> int:
-        self._validate_id("user_id", user_id)
-        self._validate_id("conversation_id", conversation_id)
-
-        fn = self.message_dao.count_messages_by_user_in_conversation
-        if callable(fn):
-            try:
-                return int(fn(user_id, conversation_id))
-            except Exception:
-                logging.exception("nb_messages_de_user_par_conv: count direct échoue")
-
 
 
     def average_message_length(self, user_id: Optional[int] = None) -> float:
@@ -155,3 +130,48 @@ class StatisticsService:
                 except Exception:
                     logging.exception("average_message_length: get_messages_by_user échoue")
 
+
+
+    def nb_message_conv(self, conversation_id: int) -> int:
+        """
+        Calcule le nombre de messages dans une conversation donnée, en utilisant les DAO disponibles.
+        """
+        self._validate_id("conversation_id", conversation_id)
+
+        fn = self.message_dao.count_messages_by_conversation
+        if callable(fn):
+            try:
+                return int(fn(conversation_id))
+            except Exception:
+                logging.exception("nb_message_conv: échec méthode count_messages_by_conversation")
+
+
+    def nb_messages_de_user_par_conv(self, user_id: int, conversation_id: int) -> int:
+        """
+        Calcule le nombre de messages envoyés par un utilisateur dans une conversation donnée,
+        en utilisant les DAO disponibles.
+        """
+        self._validate_id("user_id", user_id)
+        self._validate_id("conversation_id", conversation_id)
+
+        fn = self.message_dao.count_messages_by_user_in_conversation
+        if callable(fn):
+            try:
+                return int(fn(user_id, conversation_id))
+            except Exception:
+                logging.exception("nb_messages_de_user_par_conv: count direct échoue")
+
+    def count_collaborators_by_conv(self, conversation_id: int) -> int:
+        """
+        Calcule le nombre de collaborateurs dans une conversation donnée, en utilisant les DAO disponibles.
+        """
+        self._validate_id("conversation_id", conversation_id)
+
+        if self.collaboration_dao:
+            fn = self.collaboration_dao.count_by_conversation
+            if callable(fn):
+                try:
+                    return int(fn(conversation_id))
+                except Exception:
+                    logging.exception("count_collaborators_by_conv: échec méthode count_collaborators_by_conversation")
+        return 0
