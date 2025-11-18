@@ -62,5 +62,5 @@ stats_service = StatisticsService(
     conversation_dao=conversation_dao,
     collaboration_dao=collab_dao,
     user_dao=user_dao,
-    user_service=user_service,
+    # user_service=user_service,
 )

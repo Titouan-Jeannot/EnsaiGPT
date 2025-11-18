@@ -12,6 +12,8 @@ from cli.ui import (
 )
 from cli.context import user_service, stats_service
 
+stats_service = stats_service  # pour l'analyse statique
+
 
 def page_user_home() -> None:
     if not ensure_logged_in():
@@ -71,11 +73,13 @@ def page_account() -> None:
         stats = _get_user_stats(user.id)
         if stats:
             print("\n--- Statistiques ---")
-            print(f"Conversations actives: {stats.get('nb_conv', 'N/A')}")
-            print(f"Messages envoyes: {stats.get('nb_messages', 'N/A')}")
-            duree = stats.get("temps_passe")
+            print(f"Conversations actives: {stats_service.nb_conv(user.id)}") # ajustement : erreur AttributeError: 'dict' object has no attribute 'nb_conv'
+            print(f"Messages envoyes: {stats_service.nb_messages(user.id)}")
+            print(f"Taille du message moyenne: {stats_service.average_message_length(user.id)} caracteres")
+            duree = stats_service.
             if duree:
                 print(f"Temps estime: {duree}")
+                print("---------------------")
         print("1) Modifier mes informations")
         print("2) Supprimer mon compte")
         print("9) Retour")
