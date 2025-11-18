@@ -1,5 +1,6 @@
 # src/cli/pages/conversation_detail.py
 
+import os
 from datetime import datetime
 from typing import List
 
@@ -24,34 +25,45 @@ from cli.context import (
 from cli.pages import feedback as feedback_pages
 
 
+# ------------------------------------------------------------------
+# Affichage principal de la page conversation
+# ------------------------------------------------------------------
 def page_conversation(conv_id: int) -> None:
     if not ensure_logged_in():
         return
+
     session.current_conv_id = conv_id
+
+    # Vérification bannissement
     try:
-            is_banni = collab_service.is_banni(session.current_user_id, conv_id)
+        is_banni = collab_service.is_banni(session.current_user_id, conv_id)
     except Exception:
-            is_banni = False
+        is_banni = False
 
     if is_banni:
-        print("Vous etes banni de cette conversation. Vous ne pouvez pas y acceder.")
+        print("Vous êtes banni de cette conversation. Accès refusé.")
         return
 
     while True:
+        # Charger conversation
         try:
             conversation = conv_service.get_conversation_by_id(
                 conv_id, session.current_user_id
             )
         except Exception as exc:
-            print(f"Impossible de charger la conversation: {exc}")
+            print(f"Impossible de charger la conversation : {exc}")
             return
+
         if not conversation:
             print("Conversation introuvable.")
             return
+
         print("\n=== Conversation ===")
         print(f"ID: {conversation.id_conversation}")
         print(f"Titre: {conversation.titre}")
         print(f"Active: {'Oui' if conversation.is_active else 'Non'}")
+
+        # Permissions
         try:
             is_admin = collab_service.is_admin(session.current_user_id, conv_id)
         except Exception:
@@ -72,16 +84,16 @@ def page_conversation(conv_id: int) -> None:
         except Exception:
             is_writer = False
 
-        messages = []
+        # Affichage messages
         try:
             messages = msg_service.get_messages_paginated(conv_id, page=1, per_page=20)
-        except Exception as exc:
-            print(f"Impossible de recuperer les messages: {exc}")
-        else:
             display_messages(messages)
+        except Exception as exc:
+            print(f"Impossible de récupérer les messages : {exc}")
 
+        # Menu si banni
         if is_banni:
-            print("Vous etes banni de cette conversation. Vous ne pouvez pas envoyer de messages.")
+            print("Vous êtes banni — en lecture seule.")
             print("9) Retour")
             print("0) Quitter")
             try:
@@ -94,33 +106,40 @@ def page_conversation(conv_id: int) -> None:
                 raise QuitCommand()
             continue
 
+        # Menu principal
         if is_writer or is_admin:
             print("1) Envoyer un message")
         else:
             print("1) Envoyer un message (accès refusé)")
+
         print("2) Donner un feedback")
-        print("3) Parametrage conversation (non disponible)")
+        print("3) Paramétrage (indisponible)")
         print("4) Collaborateurs")
+
         if is_admin:
             print("5) Partager la conversation")
         else:
             print("5) Partager la conversation (admin requis)")
-        print("6) Actions (exporter/quitter/supprimer)")
+
+        print("6) Actions (exporter / quitter / supprimer)")
         print("9) Retour")
         print("0) Quitter")
+
         try:
             choice = ask_int("Votre choix", [1, 2, 3, 4, 5, 6, 9, 0])
         except BackCommand:
             return
+
+        # Routing des actions
         if choice == 1:
             if is_writer or is_admin:
                 send_user_message(conv_id)
             else:
-                print("Accès refusé: vous n'avez pas les droits pour envoyer un message.")
+                print("Accès refusé.")
         elif choice == 2:
             feedback_pages.add_feedback_flow(conv_id, messages)
         elif choice == 3:
-            print("Parametrage non implemente.")
+            print("Paramétrage non implémenté.")
         elif choice == 4:
             from cli.pages import collaboration
             collaboration.show_collaborators(conv_id)
@@ -129,7 +148,7 @@ def page_conversation(conv_id: int) -> None:
                 from cli.pages import collaboration
                 collaboration.share_conversation(conv_id)
             else:
-                print("Seuls les administrateurs peuvent partager la conversation.")
+                print("Action réservée aux administrateurs.")
         elif choice == 6:
             if conversation_actions(conv_id):
                 return
@@ -139,12 +158,17 @@ def page_conversation(conv_id: int) -> None:
             raise QuitCommand()
 
 
+# ------------------------------------------------------------------
+# Affichage messages
+# ------------------------------------------------------------------
 def display_messages(messages: List) -> None:
     if not messages:
         print("Aucun message pour le moment.")
         return
+
     print("\n--- Derniers messages ---")
     username_cache = {}
+
     for message in reversed(messages):
         timestamp = (
             message.datetime.strftime("%Y-%m-%d %H:%M")
@@ -157,25 +181,26 @@ def display_messages(messages: List) -> None:
 
 def _format_author(message, cache):
     user_id = getattr(message, "id_user", None)
+
     if getattr(message, "is_from_agent", False):
         return f"Agent ({user_id})" if user_id else "Agent"
+
     if user_id in cache:
         username = cache[user_id]
     else:
-        username = None
-        if user_id is not None:
-            try:
-                user = user_service.get_user_by_id(user_id)
-                if user:
-                    username = user.username
-            except Exception:
-                username = None
-        if not username:
+        try:
+            user = user_service.get_user_by_id(user_id)
+            username = user.username if user else f"Utilisateur {user_id}"
+        except Exception:
             username = f"Utilisateur {user_id}"
         cache[user_id] = username
+
     return f"{username} ({user_id})"
 
 
+# ------------------------------------------------------------------
+# Envoi message utilisateur
+# ------------------------------------------------------------------
 def send_user_message(conv_id: int) -> None:
     try:
         content = ask_nonempty("Votre message")
@@ -185,135 +210,130 @@ def send_user_message(conv_id: int) -> None:
     try:
         msg_service.send_message(conv_id, session.current_user_id, content)
     except Exception as exc:
-        print(f"Echec d'envoi: {exc}")
+        print(f"Échec d'envoi : {exc}")
         return
 
-    # reponse LLM
+    # Réponse LLM
     try:
         llm_service.generate_agent_reply(
             conversation_id=conv_id,
             user_id=session.current_user_id,
         )
     except Exception as e:
-        # fallback : message agent minimal si l’appel HTTP fail
         msg_service.send_agent_message(conv_id, f"[LLM indisponible] {e}")
-    print("Message envoye.")
+
+    print("Message envoyé.")
 
 
+# ------------------------------------------------------------------
+# Actions conversation : exporter / quitter / supprimer
+# ------------------------------------------------------------------
 def conversation_actions(conv_id: int) -> bool:
     try:
+
+        # Fonction interne factorisant l'export
+        def _export_conv() -> None:
+            try:
+                # 1) Génération du contenu brut
+                content = export_service.export_conversation(
+                    conv_id, session.current_user_id, fmt="plain"
+                )
+            except Exception as exc:
+                print(f"Erreur durant l'export : {exc}")
+                return
+
+            # 2) Nom de fichier basé sur le titre
+            try:
+                filename = export_service.suggest_filename(conv_id, ext="txt")
+            except Exception:
+                filename = f"conversation_{conv_id}.txt"
+
+            # 3) Dossier exports
+            exports_dir = "exports"
+            os.makedirs(exports_dir, exist_ok=True)
+
+            full_path = os.path.join(exports_dir, filename)
+
+            # 4) Écriture fichier
+            try:
+                with open(full_path, "w", encoding="utf-8") as handle:
+                    handle.write(content)
+            except OSError as exc:
+                print(f"Impossible d'écrire le fichier : {exc}")
+            else:
+                print(f"✅ Conversation exportée dans : {full_path}")
+
+        # -----------------------------------------------------
+        # Menu NON admin
+        # -----------------------------------------------------
         if not collab_service.is_admin(session.current_user_id, conv_id):
             print("1) Exporter la conversation")
             print("2) Quitter la conversation")
             print("9) Annuler")
+
             try:
                 choice = ask_int("Action", [1, 2, 9])
             except BackCommand:
                 return False
+
             if choice == 9:
                 return False
-            try:
-                if choice == 1:
-                    content = export_service.export_conversation(
-                        conv_id, session.current_user_id, fmt="plain"
-                    )
-                    try:
-                        target_path = ask_optional(
-                            "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
-                        )
-                    except BackCommand:
-                        target_path = None
-                    if target_path:
-                        try:
-                            with open(target_path, "w", encoding="utf-8") as handle:
-                                handle.write(content)
-                        except OSError as exc:
-                            print(f"Impossible d'ecrire le fichier: {exc}")
-                        else:
-                            print(f"Conversation exportee vers {target_path}.")
-                    else:
-                        print("\n--- Export conversation ---")
-                        print(content)
-                        print("--- Fin de l'export ---")
-                elif choice == 2:
-                    if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(session.current_user_id, conv_id):
-                        print("Vous etes le seul administrateur. Vous ne pouvez pas quitter la conversation sans transferer les droits d'administration.")
-                        return False
-                    if ask_yes_no("Confirmer que vous voulez quitter la conversation ?") == True:
-                        collab_service.remove_collaboration(
-                            conv_id, session.current_user_id
-                        )
-                    print("Vous avez quitte la conversation. Retour a l'espace utilisateur.")
-                    from cli.pages import user
 
+            if choice == 1:
+                _export_conv()
+            elif choice == 2:
+                if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(session.current_user_id, conv_id):
+                    print("Vous êtes le seul administrateur — vous ne pouvez pas quitter.")
+                    return False
+                if ask_yes_no("Quitter la conversation ?"):
+                    collab_service.remove_collaboration(conv_id, session.current_user_id)
+                    print("Vous avez quitté la conversation.")
+                    from cli.pages import user
                     user.page_user_home()
                     return True
 
-            except Exception as exc:
-                print(f"Action impossible: {exc}")
             return False
 
-
+        # -----------------------------------------------------
+        # Menu ADMIN
+        # -----------------------------------------------------
         else:
-            print("1)  Exporter la conversation")
-            print("2)  Quitter la conversation")
-            print("3)  Supprimer la conversation")
+            print("1) Exporter la conversation")
+            print("2) Quitter la conversation")
+            print("3) Supprimer la conversation")
             print("9) Annuler")
+
             try:
                 choice = ask_int("Action", [1, 2, 3, 9])
             except BackCommand:
                 return False
+
             if choice == 9:
                 return False
-            try:
-                if choice == 1:
-                    content = export_service.export_conversation(
-                        conv_id, session.current_user_id, fmt="plain"
-                    )
-                    try:
-                        target_path = ask_optional(
-                            "Chemin de fichier pour enregistrer (laisser vide pour afficher)"
-                        )
-                    except BackCommand:
-                        target_path = None
-                    if target_path:
-                        try:
-                            with open(target_path, "w", encoding="utf-8") as handle:
-                                handle.write(content)
-                        except OSError as exc:
-                            print(f"Impossible d'ecrire le fichier: {exc}")
-                        else:
-                            print(f"Conversation exportee vers {target_path}.")
-                    else:
-                        print("\n--- Export conversation ---")
-                        print(content)
-                        print("--- Fin de l'export ---")
 
-                elif choice == 2:
-                    if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(session.current_user_id, conv_id):
-                        print("Vous etes le seul administrateur. Vous ne pouvez pas quitter la conversation sans transferer les droits d'administration.")
-                        return False
-                    if ask_yes_no("Confirmer que vous voulez quitter la conversation ?") == True:
-                        collab_service.remove_collaboration(
-                            conv_id, session.current_user_id
-                        )
-                    print("Vous avez quitte la conversation. Retour a l'espace utilisateur.")
+            if choice == 1:
+                _export_conv()
+
+            elif choice == 2:
+                if collab_service._count_admins(conv_id) <= 1:
+                    print("Impossible : vous êtes le seul admin.")
+                    return False
+                if ask_yes_no("Quitter la conversation ?"):
+                    collab_service.remove_collaboration(conv_id, session.current_user_id)
+                    print("Vous avez quitté la conversation.")
                     from cli.pages import user
-
                     user.page_user_home()
                     return True
 
-                elif choice == 3:
-                    conv_service.archive_conversation(conv_id, session.current_user_id)
-                    print("Conversation archivee. Retour a l'espace utilisateur.")
-                    from cli.pages import user
+            elif choice == 3:
+                conv_service.archive_conversation(conv_id, session.current_user_id)
+                print("Conversation supprimée.")
+                from cli.pages import user
+                user.page_user_home()
+                return True
 
-                    user.page_user_home()
-                    return True
-            except Exception as exc:
-                print(f"Action impossible: {exc}")
             return False
 
     except Exception:
-        print("Impossible de verifier vos droits actuellement.")
+        print("Impossible de vérifier vos droits.")
         return False

@@ -296,3 +296,42 @@ class ExportService:
             lines.append(f"[{ts_s}] {author} ({role})\n{content}\n")
 
         return "\n".join(lines).rstrip()
+
+    # ------------------------------------------------------------------
+    # Helpers pour les noms de fichiers
+    # ------------------------------------------------------------------
+    def _sanitize_filename(self, name: str) -> str:
+        """
+        Nettoie une chaîne pour en faire un nom de fichier valide.
+        Remplace les caractères interdits par des underscores.
+        """
+        invalid = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
+        for char in invalid:
+            name = name.replace(char, "_")
+        name = name.strip()
+        return name or "conversation"
+
+    def suggest_filename(self, conversation_id: int, ext: str = "txt") -> str:
+        """
+        Propose un nom de fichier basé sur le titre de la conversation.
+        Exemple : 'Ma super conversation.txt'
+        """
+        self._validate_id("conversation_id", conversation_id)
+
+        fn_read_conv = self._get_callable(
+            self.conversation_dao,
+            "read",
+            "get_by_id",
+            "get_conversation_by_id",
+        )
+        conv = fn_read_conv(conversation_id) if fn_read_conv else None
+
+        if conv is None:
+            base = f"conversation_{conversation_id}"
+        else:
+            raw_title = getattr(conv, "titre", None) or f"conversation_{conversation_id}"
+            base = self._sanitize_filename(raw_title)
+
+        if ext and not ext.startswith("."):
+            ext = "." + ext
+        return f"{base}{ext or ''}"
