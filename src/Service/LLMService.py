@@ -224,13 +224,18 @@ class LLMService:
         prompt_user = ""
         # defense : conversation_dao et user_dao peuvent être None ou mal comporter
         if getattr(self, "conversation_dao", None) and hasattr(self.conversation_dao, "get_prompts_conversation"):
+            print(f"[LLMService] Récupération du prompt de la conversation {conversation_id}")
             try:
                 prompt_conv = self.conversation_dao.get_prompts_conversation(conversation_id) or ""
+                print(f"[LLMService] Prompt conversation récupéré: {prompt_conv}")
             except Exception:
                 prompt_conv = ""
         if getattr(self, "user_dao", None) and hasattr(self.user_dao, "get_prompt_user"):
+            print(f"[LLMService] Récupération du prompt de l'utilisateur {user_id}") # ajustement : ceci s'affiche
             try:
                 prompt_user = self.user_dao.get_prompt_user(user_id) or ""
+                print(f"[LLMService] Prompt user récupéré: {prompt_user}") # ajustement (45632) : il n'y a pas de print donc on ne reussi pas a récuperer le promp user
+
             except Exception:
                 prompt_user = ""
 
@@ -243,6 +248,7 @@ class LLMService:
             effective_system_prompt = self.default_system_prompt
 
         sys = effective_system_prompt
+        print(f"[LLMService] Prompt système effectif utilisé: {sys}")
         messages: List[Dict[str, str]] = [{"role": "system", "content": sys}]
 
         for m in history_messages:
