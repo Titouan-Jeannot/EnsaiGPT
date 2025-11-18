@@ -21,6 +21,7 @@ from cli.context import (
     llm_service,
     export_service,
     user_service,
+    stats_service,
 )
 from cli.pages import feedback as feedback_pages
 
@@ -63,7 +64,13 @@ def page_conversation(conv_id: int) -> None:
         print(f"Titre: {conversation.titre}")
         print(f"Active: {'Oui' if conversation.is_active else 'Non'}")
 
-        # Permissions
+        print("\n=== Statistiques de la conversation ===")
+        print(f"Messages totaux: {stats_service.nb_message_conv(conv_id)}")
+        print(f"Messages envoyes par vous: {stats_service.nb_messages_de_user_par_conv(session.current_user_id, conv_id)}")
+        print(f"Collaborateurs: {stats_service.count_collaborators_by_conv(conv_id)}")
+        print("---------------------")
+
+
         try:
             is_admin = collab_service.is_admin(session.current_user_id, conv_id)
         except Exception:

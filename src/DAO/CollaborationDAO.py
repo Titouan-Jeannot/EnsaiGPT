@@ -240,8 +240,10 @@ class CollaborationDAO(metaclass=Singleton):
                     cursor.execute(
                         """
                         SELECT * FROM collaboration
+                        JOIN conversation ON collaboration.id_conversation = conversation.id_conversation
                          WHERE id_user = %(id_user)s
-                         ORDER BY id_conversation;
+                         AND conversation.is_active = TRUE
+                         ORDER BY collaboration.id_conversation;
                         """,
                         {"id_user": id_user},
                     )

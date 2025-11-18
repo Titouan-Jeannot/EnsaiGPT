@@ -131,6 +131,53 @@ class MessageDAO:
                 row = cursor.fetchone()
                 return int(row["n"]) if row and "n" in row else 0
 
+    def count_messages_by_user(self, user_id: int) -> int:
+        """Compte le nombre de messages envoyés par un utilisateur."""
+        query = "SELECT COUNT(*) AS n FROM message WHERE id_user = %(id_user)s;"
+        with DBConnection().connection as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(query, {"id_user": user_id})
+                row = cursor.fetchone()
+                return int(row["n"]) if row and "n" in row else 0
+
+    def count_messages_by_user_in_conversation(self, user_id: int, conversation_id: int) -> int:
+        """Compte le nombre de messages envoyés par un utilisateur dans une conversation."""
+        query = """
+        SELECT COUNT(*) AS n FROM message
+        WHERE id_user = %(id_user)s AND id_conversation = %(id_conversation)s;
+        """
+        with DBConnection().connection as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    query, {"id_user": user_id, "id_conversation": conversation_id}
+                )
+                row = cursor.fetchone()
+                return int(row["n"]) if row and "n" in row else 0
+
+    def get_messages_by_user(self, user_id: int) -> List[Message]:
+        """Retourne tous les messages envoyés par un utilisateur."""
+        query = """
+        SELECT * FROM message
+        WHERE id_user = %(id_user)s
+        ORDER BY "timestamp" DESC;
+        """
+        messages: List[Message] = []
+        with DBConnection().connection as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(query, {"id_user": user_id})
+                for row in cursor.fetchall() or []:
+                    messages.append(
+                        Message(
+                            id_message=row["id_message"],
+                            id_conversation=row["id_conversation"],
+                            id_user=row["id_user"],
+                            datetime=row["timestamp"],
+                            message=row["message"],
+                            is_from_agent=row["is_from_agent"],
+                        )
+                    )
+        return messages
+
     def search_messages(self, conversation_id: int, keyword: str) -> List[Message]:
         """Recherche des messages contenant un mot-clé (ILIKE = insensible à la casse)."""
         query = """
