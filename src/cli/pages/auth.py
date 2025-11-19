@@ -9,9 +9,11 @@ from cli.ui import (
     QuitCommand,
     session,
     reset_session,
-    ensure_logged_in,
+    ensure_logged_in
 )
-from cli.context import user_service
+from cli.context import user_service, user_dao, auth_service
+from cli.pages import home
+
 
 
 def page_login() -> None:
@@ -26,15 +28,19 @@ def page_login() -> None:
         user = user_service.authenticate_user(mail, password)
         if not user:
             print("Identifiants invalides.")
+            home.page_home()
             return
         if getattr(user, "status", "active") == "banni":
             print("Votre compte a été banni. Connexion impossible.")
+            home.page_home()
             return
         if getattr(user, "status", "active") == "deleted":
             print("Votre compte a été supprimé. Connexion impossible.")
+            home.page_home()
             return
     except Exception as e:
         print(f"Erreur interne lors de la connexion : {e}")
+        home.page_home()
         return
 
     session.current_user_id = getattr(user, "id", None)
@@ -48,15 +54,62 @@ def page_login() -> None:
 
 
 def page_register() -> None:
+    """Page de création de compte utilisateur."""
     print("\n=== Creation de compte ===")
-    try:
-        username = ask_nonempty("Nom d'utilisateur")
-        nom = ask_optional("Nom (optionnel)")
-        prenom = ask_optional("Prenom (optionnel)")
-        mail = ask_nonempty("Email")
-        password = ask_nonempty("Mot de passe")
-    except BackCommand:
-        return
+
+    while True:
+        try:
+            username = ask_nonempty("Nom d'utilisateur")
+            username = username.strip()
+            try:
+                auth_service.check_user_username(None, username)
+                break
+            except ValueError as ve:
+                print(f"Nom d'utilisateur invalide: {ve}")
+
+        except BackCommand:
+            return
+    while True:
+        try:
+            nom = ask_optional("Nom (optionnel)")
+            try:
+                auth_service.check_user_nom(None, nom)
+                break
+            except ValueError as ve:
+                print(f"Nom invalide: {ve}")
+        except BackCommand:
+            return
+    while True:
+        try:
+            prenom = ask_optional("Prenom (optionnel)")
+            try:
+                auth_service.check_user_prenom(None, prenom)
+                break
+            except ValueError as ve:
+                print(f"Prenom invalide: {ve}")
+        except BackCommand:
+            return
+    while True:
+        try:
+            mail = ask_nonempty("Email")
+            mail = mail.strip().lower()
+            try:
+                auth_service.check_user_email(None, mail)
+                break
+            except ValueError as ve:
+                print(f"Email invalide: {ve}")
+        except BackCommand:
+            return
+    while True:
+        try:
+            password = ask_nonempty("Mot de passe")
+            try:
+                auth_service.check_user_password_strength(password)
+                break
+            except ValueError as ve:
+                print(f"Mot de passe invalide: {ve}")
+        except BackCommand:
+            return
     try:
         user_service.create_user(
             mail=mail,

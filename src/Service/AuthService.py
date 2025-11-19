@@ -152,6 +152,7 @@ class AuthService:
 
     # ----- Méthodes utilitaires appelées par UserService -----
     def check_user_exists(self, user_id: int):
+        """Vérifie l'existence d'un utilisateur par son ID via le DAO."""
         if user_id is None:
             raise ValueError("id requis")
         fn = (
@@ -167,6 +168,7 @@ class AuthService:
         raise ValueError("Méthode DAO introuvable pour check_user_exists")
 
     def check_user_password(self, user_id: int, plain_password: str):
+        """Vérifie que le mot de passe correspond à l'utilisateur donné."""
         if not plain_password:
             raise ValueError("Mot de passe requis pour vérification")
         # récupérer user via DAO
@@ -185,6 +187,7 @@ class AuthService:
         return True
 
     def check_user_email(self, user_id: int, email: str):
+        """Vérifie la validité et l'unicité de l'email pour un utilisateur donné."""
         if not email or not self.EMAIL_RE.match(email):
             raise ValueError("Email invalide")
         fn = getattr(self.user_dao, "get_user_by_email", None)
@@ -195,6 +198,7 @@ class AuthService:
         return True
 
     def check_user_username(self, user_id: int, username: str):
+        """Vérifie la validité et l'unicité du nom d'utilisateur pour un utilisateur donné."""
         if not username or not isinstance(username, str):
             raise ValueError("Nom d'utilisateur invalide")
         if not (3 <= len(username) <= 30):
@@ -211,6 +215,7 @@ class AuthService:
         return True
 
     def check_user_nom(self, user_id: int, nom: str):
+        """Vérifie la validité du nom pour un utilisateur donné."""
         if nom is None:
             return True
         if not isinstance(nom, str) or len(nom) > 50:
@@ -218,6 +223,7 @@ class AuthService:
         return True
 
     def check_user_prenom(self, user_id: int, prenom: str):
+        """Vérifie la validité du prénom pour un utilisateur donné."""
         if prenom is None:
             return True
         if not isinstance(prenom, str) or len(prenom) > 50:
@@ -225,6 +231,7 @@ class AuthService:
         return True
 
     def check_user_can_update(self, user_id: int):
+        """Vérifie si un utilisateur peut être modifié."""
         # vérifier existence
         fn = getattr(self.user_dao, "read", None) or getattr(
             self.user_dao, "get_user_by_id", None
@@ -239,10 +246,12 @@ class AuthService:
         return True
 
     def check_user_can_delete(self, user_id: int):
+        """Vérifie si un utilisateur peut être supprimé."""
         return self.check_user_can_update(user_id)
 
     # remplace l'ancienne check_user_is_not_admin inexistante
     def check_user_not_banned_or_deleted(self, user_id: int):
+        """Vérifie que l'utilisateur n'est pas banni ou supprimé."""
         fn = getattr(self.user_dao, "read", None) or getattr(
             self.user_dao, "get_user_by_id", None
         )
@@ -255,11 +264,13 @@ class AuthService:
         return True
 
     def check_user_is_not_self(self, current_user_id: int, target_user_id: int):
+        """Vérifie que l'utilisateur courant n'agit pas sur lui-même."""
         if current_user_id == target_user_id:
             raise ValueError("Action interdite sur soi-même")
         return True
 
     def check_user_password_strength(self, password: str):
+        """Vérifie la robustesse du mot de passe selon des critères définis."""
         if not password or len(password) < 8:
             raise ValueError("Le mot de passe doit contenir au moins 8 caractères.")
         if not re.search(r"[A-Z]", password):

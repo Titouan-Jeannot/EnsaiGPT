@@ -124,10 +124,12 @@ def page_conversation(conv_id: int) -> None:
 
         if is_admin:
             print("4) Partager la conversation")
+            print("5) Actions (exporter / paramétrage / quitter / supprimer)")
         else:
             print("4) Partager la conversation (admin requis)")
+            print("5) Actions (exporter / quitter)")
 
-        print("5) Actions (exporter / paramétrage / quitter / supprimer)")
+
         print("9) Retour")
         print("0) Quitter")
 

@@ -111,6 +111,9 @@ class UserService:
             mail = mail.strip().lower()
             self.auth_service.check_user_email(user_id, mail)
             current_user.mail = mail
+        else:
+            mail = None
+            current_user.mail = None
 
         if username is not None:
             username = username.strip()
@@ -207,7 +210,7 @@ class UserService:
         return []
 
     def delete_user(self, user_id: int) -> bool:
-        """Supprime un utilisateur par son ID."""
+        """Supprime un utilisateur par son ID. et change son mail par None"""
         # Vérification que l'utilisateur existe
         current_user = self.get_user_by_id(user_id)
         if not current_user:
@@ -217,9 +220,10 @@ class UserService:
         self.auth_service.check_user_can_delete(user_id)
 
         # Déléguer la suppression au DAO
-        # ajustement : suppression physique ou mettre en status inactive/delete ?
+        # ajustement : suppression physique ou mettre en status delete ?
+        # et modifier le mail par None pour liberer l'email
         # return self.user_dao.delete(user_id)
-        return self.update_user(user_id, status="deleted")
+        return self.update_user(user_id, mail=None, status="deleted")
 
     def authenticate_user(self, mail: str, password_plain: str) -> User:
         """Authentifie un utilisateur par email et mot de passe."""
