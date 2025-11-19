@@ -11,6 +11,7 @@ from cli.context import feedback_dao  # pour l'instant, DAO direct
 def build_feedback_object(
     user_id: int, message_id: int, is_like: bool, comment: str
 ) -> Feedback:
+    """Construire un objet Feedback à partir des entrées utilisateur."""
     created_at = datetime.now()
     try:
         return Feedback(
@@ -33,6 +34,7 @@ def build_feedback_object(
 
 
 def add_feedback_flow(conv_id: int, messages: List) -> None:
+    """Flux pour ajouter un feedback sur un message agent."""
     agent_messages = [msg for msg in messages if getattr(msg, "is_from_agent", False)]
     if not agent_messages:
         print("Aucun message agent disponible pour feedback.")

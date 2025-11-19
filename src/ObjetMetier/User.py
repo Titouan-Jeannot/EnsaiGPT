@@ -52,6 +52,7 @@ class User:
         self.setting_param = setting_param
 
     def __eq__(self, other):
+        """Compare deux instances de User pour l'égalité."""
         if not isinstance(other, User):
             return False
         return (
@@ -69,4 +70,5 @@ class User:
         )
 
     def __str__(self):
+        """Représentation textuelle de l'utilisateur."""
         return f"User(id={self.id}, username='{self.username}')"

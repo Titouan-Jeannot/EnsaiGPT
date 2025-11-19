@@ -66,6 +66,9 @@ class ExportService:
         time_format: str = "%Y-%m-%d %H:%M",
         include_usernames: bool = True,
     ) -> None:
+        """
+        Initialise le service d'export avec les DAO et services nécessaires.
+        """
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.user_dao = user_dao
@@ -80,6 +83,9 @@ class ExportService:
     # Helpers (style MessageService)
     # ------------------------------------------------------------------
     def _get_callable(self, obj, *names):
+        """
+        Recherche et retourne la première méthode callable parmi les noms donnés dans l'objet.
+        """
         for n in names:
             fn = getattr(obj, n, None)
             if callable(fn):
@@ -87,6 +93,7 @@ class ExportService:
         return None
 
     def _validate_id(self, name: str, value: int) -> None:
+        """Valide qu'un identifiant est un entier positif non nul."""
         if not isinstance(value, int) or value < 0:
             raise ValueError(f"{name} invalide")
 
@@ -94,6 +101,7 @@ class ExportService:
     # Contrôle d'accès minimal
     # ------------------------------------------------------------------
     def _check_access(self, user_id: int, conversation_id: int) -> bool:
+        """Vérifie si l'utilisateur a accès à la conversation."""
         # 1) Service de collaboration si dispo (méthodes booléennes usuelles)
         if self.collaboration_service:
             for method in ("is_admin", "is_writer", "is_viewer"):
@@ -211,6 +219,7 @@ class ExportService:
     # Builders
     # ------------------------------------------------------------------
     def _build_users_map(self, user_ids: Set[int]) -> Dict[int, str]:
+        """Construit une map user_id -> username/prenom."""
         users_map: Dict[int, str] = {}
         fn_get_user = self._get_callable(self.user_dao, "get_user_by_id", "read") if self.user_dao else None
         if not fn_get_user:
@@ -231,6 +240,7 @@ class ExportService:
         messages: List[Message],
         users_map: Optional[Dict[int, str]] = None,
     ) -> str:
+        """Formate la conversation et ses messages en Markdown."""
         titre = getattr(conversation, "titre", None) or f"Conversation #{getattr(conversation, 'id_conversation', '?')}"
         created = getattr(conversation, "created_at", None)
         created_s = created.strftime(self.time_format) if isinstance(created, (datetime.datetime, datetime.date)) else "?"
@@ -269,6 +279,7 @@ class ExportService:
         messages: List[Message],
         users_map: Optional[Dict[int, str]] = None,
     ) -> str:
+        """Formate la conversation et ses messages en texte brut."""
         titre = getattr(conversation, "titre", None) or f"Conversation #{getattr(conversation, 'id_conversation', '?')}"
         created = getattr(conversation, "created_at", None)
         created_s = created.strftime(self.time_format) if isinstance(created, (datetime.datetime, datetime.date)) else "?"

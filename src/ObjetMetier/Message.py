@@ -23,7 +23,7 @@ class Message:
 
     def __init__(
         self,
-        id_message=None,  # peut être None
+        id_message=None,
         id_conversation=None,
         id_user=None,
         datetime=None,
@@ -66,6 +66,7 @@ class Message:
         self.is_from_agent = is_from_agent
 
     def __eq__(self, other):
+        """Compare deux instances de Message pour l'égalité."""
         if not isinstance(other, Message):
             return False
         return (
@@ -78,6 +79,7 @@ class Message:
         )
 
     def __str__(self):
+        """Représentation textuelle du message."""
         author = "Agent" if self.is_from_agent else "User"
         return f"[{self.datetime}] {author}({self.id_user}) : {self.message}"
 

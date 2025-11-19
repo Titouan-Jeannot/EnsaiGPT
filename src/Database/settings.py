@@ -30,4 +30,5 @@ def get_database_url():
     return DATABASE_URL
 
 def dbname_from_url(url: str) -> str:
+    """Extrait le nom de la base de données d'une URL PostgreSQL."""
     return urlparse(url).path.lstrip("/") or ""

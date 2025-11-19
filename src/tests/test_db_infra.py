@@ -4,6 +4,7 @@ import psycopg2
 from DAO.DBConnector import DBConnection
 
 def _expected_test_db_name():
+    """Détermine le nom attendu de la base de données de test."""
     url = os.getenv("DATABASE_URL_TEST") or os.getenv("DATABASE_URL")
     if os.getenv("DATABASE_URL_TEST"):
         return urlparse(os.getenv("DATABASE_URL_TEST")).path.lstrip("/") or "test_db"
@@ -11,6 +12,7 @@ def _expected_test_db_name():
     return "test_db"
 
 def test_switch_to_test_db_under_pytest():
+    """Vérifie que la connexion DB pointe bien sur la base de test sous pytest."""
     # doit pointer sur la DB de test
     with DBConnection().connection as conn:
         with conn.cursor() as cur:
@@ -19,6 +21,7 @@ def test_switch_to_test_db_under_pytest():
             assert row["db"] == _expected_test_db_name()
 
 def test_realdictcursor_and_select_works():
+    """Vérifie que la connexion DB fonctionne et utilise RealDictCursor."""
     with DBConnection().connection as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT 1 AS ok;")

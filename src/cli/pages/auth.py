@@ -17,6 +17,7 @@ from cli.pages import home
 
 
 def page_login() -> None:
+    """Page de connexion utilisateur."""
     print("\n=== Connexion ===")
     try:
         mail = ask_nonempty("Email")
@@ -125,6 +126,7 @@ def page_register() -> None:
 
 
 def page_guest_home() -> None:
+    """Page d'accueil en mode invité."""
     print("\n=== Mode invite ===")
     print("Certaines actions exigent un compte utilisateur.")
     print("1) Rejoindre une collaboration")

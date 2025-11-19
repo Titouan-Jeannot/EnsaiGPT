@@ -49,6 +49,7 @@ class StatisticsService:
         user_dao: Optional[UserDAO] = None,
         idle_threshold: datetime.timedelta = datetime.timedelta(minutes=10),
     ):
+        """Initialise le service de statistiques avec les DAO et paramètres nécessaires."""
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.collaboration_dao = collaboration_dao
@@ -59,6 +60,7 @@ class StatisticsService:
     #                       UTILITAIRES
     # ------------------------------------------------------------
     def _get_callable(self, obj, *names):
+        """Recherche et retourne la première méthode callable parmi les noms donnés dans l'objet."""
         for n in names:
             fn = getattr(obj, n, None)
             if callable(fn):
@@ -66,6 +68,7 @@ class StatisticsService:
         return None
 
     def _validate_id(self, name: str, value: int) -> None:
+        """Valide qu'un identifiant est un entier positif."""
         if not isinstance(value, int) or value < 0:
             raise ValueError(f"{name} invalide")
 

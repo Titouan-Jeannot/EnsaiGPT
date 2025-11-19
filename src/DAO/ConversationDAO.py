@@ -117,6 +117,7 @@ class ConversationDAO(metaclass=Singleton):
 
     @log
     def get_by_id(self, conversation_id: int) -> Optional[Conversation]:
+        """Renvoie une conversation par son ID."""
         query = """
             SELECT *
               FROM conversation
@@ -178,6 +179,7 @@ class ConversationDAO(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     @log
     def update_title(self, conversation_id: int, new_title: str) -> bool:
+        """Met à jour le titre d'une conversation."""
         query = """
             UPDATE conversation
                SET titre = %(titre)s
@@ -187,11 +189,13 @@ class ConversationDAO(metaclass=Singleton):
 
     @log
     def delete(self, conversation_id: int) -> bool:
+        """Supprime une conversation."""
         query = "DELETE FROM conversation WHERE id_conversation = %(id_conversation)s;"
         return self._execute(query, {"id_conversation": conversation_id}) == 1
 
     @log
     def set_active(self, conversation_id: int, is_active: bool) -> bool:
+        """Active ou désactive une conversation."""
         query = """
             UPDATE conversation
                SET is_active = %(is_active)s
@@ -204,6 +208,7 @@ class ConversationDAO(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     @log
     def has_access(self, conversation_id: int, user_id: int) -> bool:
+        """Vérifie si un utilisateur a un accès (lecture ou écriture) à une conversation."""
         query = """
             SELECT 1
               FROM collaboration
@@ -215,6 +220,7 @@ class ConversationDAO(metaclass=Singleton):
 
     @log
     def has_write_access(self, conversation_id: int, user_id: int) -> bool:
+        """Vérifie si un utilisateur a un accès en écriture à une conversation."""
         query = """
             SELECT 1
               FROM collaboration

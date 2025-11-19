@@ -34,6 +34,9 @@ class AuthService:
     EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 
     def __init__(self, user_dao: UserDAO):
+        """
+        Initialise le service d'authentification avec un DAO utilisateur.
+        """
         self.user_dao = user_dao
         # suivi simple en mémoire des derniers échecs : {mail: last_failed_ts}
         self._last_failed = {}

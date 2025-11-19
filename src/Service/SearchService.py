@@ -23,6 +23,7 @@ class SearchService:
         conversation_dao: ConversationDAO,
         collaboration_dao: CollaborationDAO,
     ):
+        """Initialise le service de recherche avec les DAO nécessaires."""
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.collaboration_dao = collaboration_dao

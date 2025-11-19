@@ -4,6 +4,7 @@ from cli.ui import ask_int, BackCommand, QuitCommand, session
 from cli.pages import auth  # OK : sous-module auth, pas de cycle ici
 
 def page_home() -> None:
+    """Page d'accueil principale."""
     print("\n=== Accueil ===")
     print("1) Connexion")
     print("2) Creation de compte")

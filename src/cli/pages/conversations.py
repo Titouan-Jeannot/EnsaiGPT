@@ -18,6 +18,7 @@ from cli.context import conv_service, search_service
 
 
 def page_manage() -> None:
+    """Page de gestion des conversations."""
     if not ensure_logged_in():
         return
     while True:
@@ -38,6 +39,7 @@ def page_manage() -> None:
 
 
 def page_search_conversations() -> None:
+    """Page de recherche de conversations."""
     if not ensure_logged_in():
         return
     while True:
@@ -93,6 +95,7 @@ def page_search_conversations() -> None:
 
 
 def open_conversation_from_list(conversations: List) -> None:
+    """Ouvrir une conversation à partir d'une liste."""
     rows = []
     ids: List[int] = []
     for conv in conversations:
@@ -129,6 +132,7 @@ def open_conversation_from_list(conversations: List) -> None:
 
 
 def create_conversation() -> None:
+    """Créer une nouvelle conversation."""
     if not ensure_logged_in():
         return
     print("\n--- Nouvelle conversation ---")

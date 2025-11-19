@@ -30,6 +30,7 @@ from cli.pages import feedback as feedback_pages
 # Affichage principal de la page conversation
 # ------------------------------------------------------------------
 def page_conversation(conv_id: int) -> None:
+    """Page de détail d'une conversation."""
     if not ensure_logged_in():
         return
 
@@ -168,6 +169,7 @@ def page_conversation(conv_id: int) -> None:
 # Affichage messages
 # ------------------------------------------------------------------
 def display_messages(messages: List) -> None:
+    """Afficher les messages d'une conversation."""
     if not messages:
         print("Aucun message pour le moment.")
         return
@@ -186,6 +188,7 @@ def display_messages(messages: List) -> None:
 
 
 def _format_author(message, cache):
+    """Formater l'auteur d'un message pour l'affichage."""
     user_id = getattr(message, "id_user", None)
 
     if getattr(message, "is_from_agent", False):
@@ -208,6 +211,7 @@ def _format_author(message, cache):
 # Envoi message utilisateur
 # ------------------------------------------------------------------
 def send_user_message(conv_id: int) -> None:
+    """Envoyer un message utilisateur dans une conversation."""
     try:
         content = ask_nonempty("Votre message")
     except BackCommand:
@@ -235,6 +239,7 @@ def send_user_message(conv_id: int) -> None:
 # Actions conversation : exporter / paramétrage / quitter / supprimer
 # ------------------------------------------------------------------
 def conversation_actions(conv_id: int) -> bool:
+    """Gérer les actions avancées d'une conversation."""
     try:
 
         # Fonction interne factorisant l'export

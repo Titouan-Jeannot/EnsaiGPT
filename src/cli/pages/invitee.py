@@ -8,6 +8,7 @@ from cli.ui import QuitCommand, ask_int, BackCommand, ask_nonempty
 from cli.context import llm_service
 
 def page_invitee() -> None:
+    """Page du mode invité."""
     print("\n=== Mode invite ===")
     print("Certaines actions exigent un compte utilisateur.")
     print("1) Envoyer un requete (sans historique)")
@@ -29,6 +30,7 @@ def page_invitee() -> None:
 
 
 def page_send_request_invitee() -> None:
+    """Envoyer une requête en mode invité."""
     print("\n=== Envoyer une requete en mode invite ===")
     try:
         prompt = ask_nonempty("Votre requete : ")

@@ -3,6 +3,7 @@ import psycopg2
 from .schema_sql import SCHEMA_SQL
 
 def init_db_for_url(db_url: str):
+    """Initialiser la base de données pour l'URL donnée."""
     print(f"Connexion à PostgreSQL pour initialiser le schéma…")
     with psycopg2.connect(db_url) as conn:
         conn.autocommit = False
@@ -19,4 +20,3 @@ def init_db_for_url(db_url: str):
 if __name__ == "__main__":
     from .settings import DATABASE_URL
     init_db_for_url(DATABASE_URL)
-

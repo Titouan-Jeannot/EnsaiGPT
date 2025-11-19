@@ -17,6 +17,7 @@ stats_service = stats_service  # pour l'analyse statique
 
 
 def page_user_home() -> None:
+    """Page principale de l'utilisateur connecté."""
     if not ensure_logged_in():
         return
     while True:
@@ -51,6 +52,7 @@ def page_user_home() -> None:
 
 
 def page_account() -> None:
+    """Page de gestion du compte utilisateur."""
     if not ensure_logged_in():
         return
     while True:
@@ -107,6 +109,7 @@ def page_account() -> None:
 
 
 def update_account(user_id: int) -> None:
+    """Mettre à jour les informations du compte utilisateur."""
     print("\n--- Modification du profil ---")
     print("Laisser vide pour conserver la valeur actuelle.")
     try:
@@ -139,6 +142,7 @@ def update_account(user_id: int) -> None:
 
 
 def _get_user_stats(user_id: int) -> dict:
+    """Récupérer les statistiques de l'utilisateur."""
     stats = {}
     try:
         stats["nb_conv"] = stats_service.nb_conv(user_id)
@@ -158,6 +162,7 @@ def _get_user_stats(user_id: int) -> dict:
 
 
 def _format_duration(delta) -> str:
+    """Formater une durée en une chaîne lisible."""
     try:
         total_seconds = int(delta.total_seconds())
     except Exception:

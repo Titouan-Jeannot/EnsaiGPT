@@ -41,6 +41,7 @@ class Feedback:
         self.created_at = created_at
 
     def __eq__(self, other):
+        """Compare deux instances de Feedback pour l'égalité."""
         if not isinstance(other, Feedback):
             return False
         return (self.id_feedback == other.id_feedback and

@@ -78,6 +78,9 @@ class LLMService:
         default_max_tokens: int = 512,
         timeout: float = 20.0,
     ) -> None:
+        """
+        Initialise le service LLM avec les DAO et paramètres nécessaires.
+        """
         self.message_dao = message_dao
         self.conversation_dao = conversation_dao
         self.user_dao = user_dao
@@ -104,6 +107,7 @@ class LLMService:
     # Helpers
     # ------------------------------------------------------------------
     def _validate_id(self, name: str, value: int) -> None:
+        """Valide qu'un identifiant est un entier positif non nul."""
         if not isinstance(value, int) or value <= 0:
             raise ValueError(f"{name} invalide: {value}")
 

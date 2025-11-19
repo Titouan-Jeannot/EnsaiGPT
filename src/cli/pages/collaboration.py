@@ -13,6 +13,7 @@ from cli.ui import session
 
 
 def page_join_collab() -> None:
+    """Page pour rejoindre une collaboration."""
     if session.current_user_id is None:
         print("Un compte est requis pour rejoindre une collaboration.")
         return
@@ -36,6 +37,7 @@ def page_join_collab() -> None:
 
 
 def show_collaborators(conv_id: int) -> None:
+    """Afficher les collaborateurs d'une conversation."""
     if session.current_user_id is None:
         print("Veuillez vous connecter pour consulter les collaborateurs.")
         return
@@ -144,6 +146,7 @@ def show_collaborators(conv_id: int) -> None:
 
 
 def share_conversation(conv_id: int) -> None:
+    """Partager une conversation via des tokens et invitations."""
     if session.current_user_id is None:
         print("Veuillez vous connecter pour partager une conversation.")
         return

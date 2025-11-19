@@ -27,12 +27,14 @@ class MessageService:
         user_service: Optional[UserService] = None,
         auth_service: Optional[AuthService] = None,
     ):
+        """Initialise le service de message avec les DAO et services nécessaires."""
         self.message_dao = message_dao
         self.user_service = user_service
         self.auth_service = auth_service
 
     # helper to resolve dao methods by possible names
     def _get_dao_callable(self, *names):
+        """Recherche et retourne la première méthode callable parmi les noms donnés dans le DAO."""
         for n in names:
             fn = getattr(self.message_dao, n, None)
             if callable(fn):

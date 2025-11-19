@@ -17,11 +17,13 @@ class CollaborationService(metaclass=Singleton):
     VALID_ROLES = {"admin", "writer", "viewer", "banni"}
 
     def __init__(self):
+        """Initialisation du service de collaboration."""
         self.collab_dao = CollaborationDAO()
         self.user_dao = UserDAO()
         self.conversation_dao = ConversationDAO()
 
     def _normalize_role(self, role: str) -> str:
+        """Normalise et valide un rôle de collaboration."""
         if not isinstance(role, str):
             raise ValueError("Rôle invalide.")
         norm = role.strip().lower()
@@ -32,18 +34,21 @@ class CollaborationService(metaclass=Singleton):
         return norm
 
     def _require_collaboration(self, conversation_id: int, user_id: int) -> Collaboration:
+        """Exige qu'une collaboration existe entre un utilisateur et une conversation."""
         collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
         if not collab:
             raise PermissionError("Accès refusé à cette conversation.")
         return collab
 
     def _require_admin(self, conversation_id: int, user_id: int) -> Collaboration:
+        """Exige qu'un utilisateur soit admin dans une conversation."""
         collab = self._require_collaboration(conversation_id, user_id)
         if collab.role.lower() != "admin":
             raise PermissionError("Seuls les administrateurs peuvent modifier les collaborateurs.")
         return collab
 
     def _count_collaborators(self, conversation_id: int) -> int:
+        """Compte le nombre de collaborateurs dans une conversation."""
         if hasattr(self.collab_dao, "count_by_conversation"):
             try:
                 return int(self.collab_dao.count_by_conversation(conversation_id))
