@@ -48,7 +48,7 @@ class ConversationService:
         )
 
     def create_conversation(
-        self, title: str, user_id: int, setting_conversation: str = "Tu es un assistant utile."
+        self, title: str, user_id: int, setting_conversation: str or None = ""
     ) -> Conversation:
         """Crée une nouvelle conversation et ajoute le créateur comme admin."""
         # Vérifier que l'utilisateur existe

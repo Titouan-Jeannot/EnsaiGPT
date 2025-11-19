@@ -141,7 +141,7 @@ def create_conversation() -> None:
         conversation = conv_service.create_conversation(
             title=title,
             user_id=session.current_user_id,
-            setting_conversation=setting or "Tu es un assistant utile.",
+            setting_conversation=setting or "",
         )
     except Exception as exc:
         print(f"Echec de creation: {exc}")
