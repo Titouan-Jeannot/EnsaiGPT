@@ -14,11 +14,9 @@ for module_name in ["Service.ExportService", "Service.ExportService"]:
         mod = importlib.import_module(module_name)
         ExportService = getattr(mod, "ExportService", None)
         if ExportService:
-            print(f"[INFO] Import réussi : {module_name}")
             break
     except Exception as e:
         import_error = e
-        print(f"[ERREUR] Impossible d'importer {module_name} : {e}")
         traceback.print_exc()
 
 if ExportService is None:  # pragma: no cover

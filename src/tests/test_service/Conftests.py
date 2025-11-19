@@ -9,8 +9,6 @@ for p in (ROOT, SRC):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-print("[test_Service] conftest local chargé")  # debug visible pendant la collecte
-
 @pytest.fixture(scope="session", autouse=True)
 def _prepare_test_db():
     """

@@ -76,7 +76,7 @@ def page_account() -> None:
         stats = _get_user_stats(user.id)
         if stats:
             print("\n--- Statistiques ---")
-            print(f"Conversations actives: {stats_service.nb_conv(user.id)}") # ajustement : erreur AttributeError: 'dict' object has no attribute 'nb_conv'
+            print(f"Conversations actives: {stats_service.nb_conv(user.id)}")
             print(f"Messages envoyes: {stats_service.nb_messages(user.id)}")
             # print(f"Taille du message moyen: {stats_service.average_message_length(user.id)} caracteres")
             print("---------------------")

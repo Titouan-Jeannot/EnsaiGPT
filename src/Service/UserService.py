@@ -68,7 +68,7 @@ class UserService:
 
         # Création de l'objet User
         user = User(
-            id=None,  # sera généré par la BD ajustement : comment ça se passe
+            id=None,
             username=username,
             nom=nom,
             prenom=prenom,
@@ -98,7 +98,6 @@ class UserService:
     ) -> bool:
         """Met à jour un utilisateur à partir des données brutes."""
         # Récupérer l'utilisateur existant
-        # ajustement : il faut verifier que les infos sont valides avant de faire la mise à jour
         current_user = self.get_user_by_id(user_id)
         if not current_user:
             raise ValueError("Utilisateur non trouvé")
@@ -145,7 +144,6 @@ class UserService:
             current_user.status = status
 
         if setting_param is not None:
-            # ajustement : validation possible du parametre
             if not isinstance(setting_param, str):
                 raise ValueError("Le paramètre de configuration doit être une chaîne de caractères.")
             if not setting_param:
@@ -220,7 +218,6 @@ class UserService:
         self.auth_service.check_user_can_delete(user_id)
 
         # Déléguer la suppression au DAO
-        # ajustement : suppression physique ou mettre en status delete ?
         # et modifier le mail par None pour liberer l'email
         # return self.user_dao.delete(user_id)
         return self.update_user(user_id, mail=None, status="deleted")

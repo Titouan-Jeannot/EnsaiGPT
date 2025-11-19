@@ -13,7 +13,7 @@ class User:
         - id peut être None pour un utilisateur non encore inséré en base.
         - password_hash et salt doivent être des chaînes (base64) pour un objet persistant.
         """
-        # ajustement : faire d'autre verifications, verifier base64 et status peut etre que "active", "inactive", "banni"
+        
         if id is not None and not isinstance(id, int):
             raise ValueError("id must be an integer or None")
         if not isinstance(username, str):

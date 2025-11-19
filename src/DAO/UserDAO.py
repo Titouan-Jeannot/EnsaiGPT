@@ -181,7 +181,6 @@ class UserDAO:
     def update_last_login(self, user_id: int) -> None:
         """
         Met à jour la date du dernier login pour un utilisateur.
-        ajustement : Est-ce que c'est en UTC ?
         """
         query = "UPDATE users SET last_login = NOW() WHERE id_user = %(id)s;"
         with DBConnection().connection as conn:
@@ -191,16 +190,11 @@ class UserDAO:
 
     def get_prompt_user(self, user_id: int) -> str:
         """Récupère le prompt personnalisé de l'utilisateur."""
-        print("DAO get_prompt_user called") # affiché
         query = "SELECT setting_param FROM users WHERE id_user = %(id)s;"
-        print(f"Executing query: {query} with user_id={user_id}") # affiché
         with DBConnection().connection as conn:
             with conn.cursor() as cur:
                 cur.execute(query, {"id": user_id})
                 row = cur.fetchone()
-                print(f"Query result: {row}")
                 if row:
-                    print(f"Returning setting_param: {row['setting_param']}")
                     return row["setting_param"]  # setting_param
-                print("No setting_param found, returning None")
                 return None

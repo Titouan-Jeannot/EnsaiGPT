@@ -170,7 +170,7 @@ def share_conversation(conv_id: int) -> None:
     print(f"Token lecture : {conversation.token_viewer}")
     print(f"Token ecriture : {conversation.token_writter}")
     try:
-        invite_user_id_yn = ask_nonempty("Voule vous inviter un utilisateur par id ? (y/n)") # ajustement : on aurait pu utiliser ask_yes_no mais pour garder la logique existante on reste comme ca
+        invite_user_id_yn = ask_nonempty("Voule vous inviter un utilisateur par id ? (y/n)")
         if invite_user_id_yn.lower() in {"y", "yes", "o", "oui"}:
             target_user = ask_int("ID utilisateur a inviter", [])
             can_write = ask_yes_no("Autoriser l'ecriture ?")
