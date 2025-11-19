@@ -19,14 +19,12 @@ class TestSearchService:
     KEYWORD = "architecture"
     TARGET_DATE = datetime(2025, 11, 5)
     
-    # ✅ Aligne l'attendu avec le comportement actuel du service (inclut 'reader')
     CONV_IDS_AUTORISES = [101, 102, 103, 104]
 
     COLLABORATIONS_MOCK = [
         Collaboration(id_conversation=101, id_user=USER_ID, role="admin"),
         Collaboration(id_conversation=102, id_user=USER_ID, role="writer"),
         Collaboration(id_conversation=103, id_user=USER_ID, role="viewer"),
-        Collaboration(id_conversation=104, id_user=USER_ID, role="reader")  # inclus
     ]
     
     MESSAGE_LIST_MOCK = [Message(id_message=1, id_conversation=101, message="Message contenant architecture")]
