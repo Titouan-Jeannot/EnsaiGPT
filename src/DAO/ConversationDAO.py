@@ -252,3 +252,12 @@ class ConversationDAO(metaclass=Singleton):
         if row:
             return row.get("settings_conversation")
         return None
+
+    def update_setting(self, conversation_id: int, new_setting: str) -> bool:
+        """Met à jour le paramètre de configuration (settings_conversation) d’une conversation."""
+        query = """
+            UPDATE conversation
+               SET settings_conversation = %(settings_conversation)s
+             WHERE id_conversation = %(id_conversation)s;
+        """
+        return self._execute(query, {"settings_conversation": new_setting, "id_conversation": conversation_id}) == 1

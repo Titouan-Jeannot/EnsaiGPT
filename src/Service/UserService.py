@@ -137,7 +137,7 @@ class UserService:
                 current_user.salt = salt
 
         if status is not None:
-            if status not in ["active", "inactive", "banni", "delete"]:
+            if status not in ["active", "banni", "deleted"]:
                 raise ValueError("Statut invalide")
             current_user.status = status
 
@@ -219,7 +219,7 @@ class UserService:
         # Déléguer la suppression au DAO
         # ajustement : suppression physique ou mettre en status inactive/delete ?
         # return self.user_dao.delete(user_id)
-        return self.update_user(user_id, status="inactive")
+        return self.update_user(user_id, status="deleted")
 
     def authenticate_user(self, mail: str, password_plain: str) -> User:
         """Authentifie un utilisateur par email et mot de passe."""

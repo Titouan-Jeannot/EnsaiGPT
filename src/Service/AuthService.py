@@ -234,8 +234,8 @@ class AuthService:
             raise ValueError("Utilisateur introuvable")
         # ne pas autoriser si status est 'banni' ou 'inactive'
         status = getattr(user, "status", None)
-        if status and status.lower() in ("banni", "inactive"):
-            raise ValueError("Utilisateur non modifiable (banni/supprimé)")
+        if status and status.lower() in ("banni", "deleted"):
+            raise ValueError("Utilisateur non modifiable (banni/deleted)")
         return True
 
     def check_user_can_delete(self, user_id: int):

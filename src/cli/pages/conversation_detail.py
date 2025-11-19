@@ -117,23 +117,22 @@ def page_conversation(conv_id: int) -> None:
         if is_writer or is_admin:
             print("1) Envoyer un message")
         else:
-            print("1) Envoyer un message (accès refusé)")
+            print("1) Envoyer un message (lecture seule)")
 
         print("2) Donner un feedback")
-        print("3) Paramétrage (indisponible)")
-        print("4) Collaborateurs")
+        print("3) Collaborateurs")
 
         if is_admin:
-            print("5) Partager la conversation")
+            print("4) Partager la conversation")
         else:
-            print("5) Partager la conversation (admin requis)")
+            print("4) Partager la conversation (admin requis)")
 
-        print("6) Actions (exporter / quitter / supprimer)")
+        print("5) Actions (exporter / paramétrage / quitter / supprimer)")
         print("9) Retour")
         print("0) Quitter")
 
         try:
-            choice = ask_int("Votre choix", [1, 2, 3, 4, 5, 6, 9, 0])
+            choice = ask_int("Votre choix", [1, 2, 3, 4, 5, 9, 0])
         except BackCommand:
             return
 
@@ -142,21 +141,19 @@ def page_conversation(conv_id: int) -> None:
             if is_writer or is_admin:
                 send_user_message(conv_id)
             else:
-                print("Accès refusé.")
+                print("Vous n'avez pas les droits d'écriture dans cette conversation.")
         elif choice == 2:
             feedback_pages.add_feedback_flow(conv_id, messages)
         elif choice == 3:
-            print("Paramétrage non implémenté.")
-        elif choice == 4:
             from cli.pages import collaboration
             collaboration.show_collaborators(conv_id)
-        elif choice == 5:
+        elif choice == 4:
             if is_admin:
                 from cli.pages import collaboration
                 collaboration.share_conversation(conv_id)
             else:
                 print("Action réservée aux administrateurs.")
-        elif choice == 6:
+        elif choice == 5:
             if conversation_actions(conv_id):
                 return
         elif choice == 9:
@@ -233,7 +230,7 @@ def send_user_message(conv_id: int) -> None:
 
 
 # ------------------------------------------------------------------
-# Actions conversation : exporter / quitter / supprimer
+# Actions conversation : exporter / paramétrage / quitter / supprimer
 # ------------------------------------------------------------------
 def conversation_actions(conv_id: int) -> bool:
     try:
@@ -306,12 +303,13 @@ def conversation_actions(conv_id: int) -> bool:
         # -----------------------------------------------------
         else:
             print("1) Exporter la conversation")
-            print("2) Quitter la conversation")
-            print("3) Supprimer la conversation")
+            print("2) Paramétrage")
+            print("3) Quitter la conversation")
+            print("4) Supprimer la conversation")
             print("9) Annuler")
 
             try:
-                choice = ask_int("Action", [1, 2, 3, 9])
+                choice = ask_int("Action", [1, 2, 3, 4, 9])
             except BackCommand:
                 return False
 
@@ -322,6 +320,30 @@ def conversation_actions(conv_id: int) -> bool:
                 _export_conv()
 
             elif choice == 2:
+                print("Voici le prompt système actuel de la conversation :")
+                conversation = conv_service.get_conversation_by_id(
+                conv_id, session.current_user_id
+                )
+
+                if not conversation.setting_conversation:
+                    print("Aucun prompt système défini pour la conversation. Chaque utilisateur utilise son propre prompt système.")
+                print(conversation.setting_conversation)
+
+                try:
+                    is_modifier_prompt = ask_yes_no("Voulez-vous le modifier ?")
+                except BackCommand:
+                    return False
+                if not is_modifier_prompt:
+                    return False
+                try:
+                    new_setting = ask_optional("Nouveau prompt système (laisser vide pour garder le prompt système de chaque utilisateur)")
+                    conv_service.update_conversation_setting(conv_id, session.current_user_id, new_setting)
+
+                    print("Prompt système changé avec succès.")
+
+                except BackCommand:
+                    return False
+            elif choice == 3:
                 if collab_service._count_admins(conv_id) <= 1:
                     print("Impossible : vous êtes le seul admin.")
                     return False
@@ -332,7 +354,7 @@ def conversation_actions(conv_id: int) -> bool:
                     user.page_user_home()
                     return True
 
-            elif choice == 3:
+            elif choice == 4:
                 conv_service.archive_conversation(conv_id, session.current_user_id)
                 print("Conversation supprimée.")
                 from cli.pages import user

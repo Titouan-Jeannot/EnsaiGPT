@@ -188,3 +188,12 @@ class ConversationService:
         self.conversation_dao.add_user_access(
             conversation_id, target_user_id, can_write
         )
+
+    def update_conversation_setting(
+        self, conversation_id: int, user_id: int, new_setting: str
+    ) -> None:
+        """Met à jour le paramètre de configuration de la conversation."""
+        self._ensure_admin(user_id, conversation_id, "modifier le paramètre de configuration")
+        if not self.conversation_dao.has_write_access(conversation_id, user_id):
+            raise ValueError("Droits d'écriture requis pour modifier le paramètre de configuration")
+        self.conversation_dao.update_setting(conversation_id, new_setting)

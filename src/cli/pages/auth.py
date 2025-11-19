@@ -27,6 +27,12 @@ def page_login() -> None:
         if not user:
             print("Identifiants invalides.")
             return
+        if getattr(user, "status", "active") == "banni":
+            print("Votre compte a été banni. Connexion impossible.")
+            return
+        if getattr(user, "status", "active") == "deleted":
+            print("Votre compte a été supprimé. Connexion impossible.")
+            return
     except Exception as e:
         print(f"Erreur interne lors de la connexion : {e}")
         return

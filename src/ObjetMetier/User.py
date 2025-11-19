@@ -34,8 +34,8 @@ class User:
             raise ValueError("last_login must be a timestamp or None")
         if not isinstance(status, str):
             raise ValueError("status must be a string")
-        if status not in ["active", "inactive", "banni"]:
-            raise ValueError("status must be 'active', 'inactive', or 'banni'")
+        if status not in ["active", "deleted", "banni"]:
+            raise ValueError("status must be 'active', 'deleted', or 'banni'")
         if not isinstance(setting_param, str):
             raise ValueError("setting_param must be a string")
 
