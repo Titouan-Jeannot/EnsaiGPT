@@ -9,11 +9,12 @@ from cli.ui import (
     QuitCommand,
     session,
     reset_session,
-    ensure_logged_in
+    ensure_logged_in,
 )
 from cli.context import user_service, user_dao, auth_service
 from cli.pages import home
-
+from cli.pages import collaboration
+from cli.pages import user as user_pages
 
 
 def page_login() -> None:
@@ -49,8 +50,6 @@ def page_login() -> None:
     session.current_conv_id = None
     session.is_guest = False
     print(f"Connexion reussie. Bonjour {session.current_username}!")
-
-    from cli.pages import user as user_pages
     user_pages.page_user_home()
 
 
@@ -137,7 +136,6 @@ def page_guest_home() -> None:
     except BackCommand:
         return
     if choice == 1:
-        from cli.pages import collaboration
         collaboration.page_join_collab()
     elif choice == 9:
         session.is_guest = False
