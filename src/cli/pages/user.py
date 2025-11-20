@@ -11,7 +11,6 @@ from cli.ui import (
     ensure_logged_in,
 )
 from cli.context import user_service, stats_service
-from cli.pages.home import page_home
 
 stats_service = stats_service  # pour l'analyse statique
 
@@ -48,6 +47,7 @@ def page_user_home() -> None:
             reset_session()
             return
         elif choice == 0:
+            from cli.pages.home import page_home
             raise QuitCommand()
 
 
