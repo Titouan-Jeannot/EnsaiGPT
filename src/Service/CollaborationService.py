@@ -219,10 +219,20 @@ class CollaborationService(metaclass=Singleton):
         conv = self.conversation_dao.read(conversation_id)
         if conv is None:
             return False
+        # verifier si l'user est déjà dans la conversation
+        try:
+            existing_collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
+            if existing_collab is not None:
+                print("Vous êtes déjà collaborateur de cette conversation.")
+                return False
+        except Exception:
+            pass
 
-        if token == getattr(conv, "token_viewer", None):
-            return self.create_collab(user_id, conversation_id, "viewer")
-        if token == getattr(conv, "token_writter", None):
-            return self.create_collab(user_id, conversation_id, "writer")
-
+        try:
+            if token == getattr(conv, "token_viewer", None):
+                return self.create_collab(user_id, conversation_id, "viewer")
+            if token == getattr(conv, "token_writter", None):
+                return self.create_collab(user_id, conversation_id, "writer")
+        except Exception:
+            pass
         return False

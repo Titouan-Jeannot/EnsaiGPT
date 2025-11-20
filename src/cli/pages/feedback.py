@@ -24,7 +24,7 @@ def build_feedback_object(
         )
     except Exception:
         return Feedback(
-            id_feedback=0,
+            id_feedback=123,
             id_user=user_id,
             id_message=message_id,
             is_like=is_like,
@@ -70,4 +70,6 @@ def add_feedback_flow(conv_id: int, messages: List) -> None:
     except Exception as exc:
         print(f"Echec d'enregistrement du feedback: {exc}")
         return
-    print(f"Feedback enregistre avec l'id {result.id_feedback}.")
+
+    print("Feedback enregistre avec succes.")
+    # print(f"Feedback enregistre avec l'id {result.id_feedback}.")

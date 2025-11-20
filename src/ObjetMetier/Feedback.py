@@ -20,7 +20,7 @@ class Feedback:
         -----------
         - ValueError : si un des paramètres est None
         """
-        if id_feedback is None or not isinstance(id_feedback, int) or id_feedback < 0:
+        if not isinstance(id_feedback, int) or id_feedback < 0:
             raise ValueError("id_feedback must be a non-null positive integer")
         if id_user is None or not isinstance(id_user, int) or id_user < 0:
             raise ValueError("id_user must be a non-null positive integer")

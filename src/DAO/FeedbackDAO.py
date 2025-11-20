@@ -38,7 +38,7 @@ class FeedbackDAO:
                     row = cur.fetchone()
             if not row:
                 raise RuntimeError("Insertion feedback: RETURNING vide.")
-            return created
+            return feedback
         except Exception as e:
             logging.error(f"Erreur lors de la création du feedback : {e}")
             raise

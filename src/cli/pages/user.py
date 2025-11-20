@@ -113,12 +113,15 @@ def update_account(user_id: int) -> None:
     print("\n--- Modification du profil ---")
     print("Laisser vide pour conserver la valeur actuelle.")
     try:
-        mail = ask_optional("Nouvel email")
+
         username = ask_optional("Nouveau pseudo")
         nom = ask_optional("Nouveau nom")
         prenom = ask_optional("Nouveau prenom")
         setting_param = ask_optional("Nouveau parametre assistant")
         from cli.ui import ask_nonempty
+        change_mail = ask_yes_no("Nouvel email")
+        if change_mail:
+            mail = ask_nonempty("Nouvel email")
         change_password = ask_yes_no("Modifier le mot de passe ?")
         password = None
         if change_password:
