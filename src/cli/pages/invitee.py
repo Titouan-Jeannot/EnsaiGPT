@@ -1,47 +1,79 @@
 # src/cli/pages/invitee.py
 
-from cli.ui import QuitCommand, ask_int, BackCommand, ask_nonempty
-# adapte le chemin suivant à ton projet si besoin :
-# from cli.Service.LLMService import llm_service
-# ou : from Service.LLMService import llm_service
-# (je laisse le nom llm_service tel que tu l'utilises plus bas)
+from cli.ui import (
+    QuitCommand,
+    BackCommand,
+    ask_nonempty,
+    ask_menu,
+)
 from cli.context import llm_service
 
-def page_invitee() -> None:
+
+def _go_home() -> None:
+    """Retour à l'accueil (import local pour éviter les cycles)."""
+    from cli.pages.home import page_home
+    page_home()
+
+
+def page_invitee(header: str | None = None) -> None:
     """Page du mode invité."""
-    print("\n=== Mode invite ===")
-    print("Certaines actions exigent un compte utilisateur.")
-    print("1) Envoyer un requete (sans historique)")
-    print("9) Retour accueil")
-    print("0) Quitter")
+    while True:
+        try:
+            choix = ask_menu(
+                title="Mode invité",
+                subtitle="Certaines actions exigent un compte utilisateur.",
+                options=[
+                    ("Envoyer une requête (sans historique)", "send"),
+                    ("Retour accueil", "home"),
+                    ("Quitter l'application", "quit"),
+                ],
+                clear_screen=True,
+                header=header,  # ➜ ici on affiche la question/réponse si fournie
+            )
+        except BackCommand:
+            # On revient simplement au menu appelant
+            return
+
+        if choix == "send":
+            # Après une nouvelle requête, on remplacera le header
+            header = page_send_request_invitee()
+        elif choix == "home":
+            _go_home()
+            return
+        elif choix == "quit":
+            raise QuitCommand()
+
+
+def page_send_request_invitee() -> str | None:
+    """Envoyer une requête en mode invité.
+
+    Retourne une chaîne 'header' à afficher dans le prochain écran de menu,
+    ou None en cas d'annulation.
+    """
+    print("\n=== Envoyer une requête en mode invité ===")
     try:
-        choice = ask_int("Votre choix", [1, 9, 0])
+        prompt = ask_nonempty("Votre requête : ")
     except BackCommand:
-        return
-
-    if choice == 1:
-        page_send_request_invitee()
-    elif choice == 9:
-        # import LOCAL pour éviter l'import circulaire
-        from cli.pages.home import page_home
-        page_home()
-    elif choice == 0:
-        raise QuitCommand()
-
-
-def page_send_request_invitee() -> None:
-    """Envoyer une requête en mode invité."""
-    print("\n=== Envoyer une requete en mode invite ===")
-    try:
-        prompt = ask_nonempty("Votre requete : ")
-    except BackCommand:
-        return
+        return None
 
     try:
         response = llm_service.requete_invitee(prompt=prompt)
     except Exception as e:
-        print(f"Erreur lors de la generation de la reponse: {e}")
-        return
+        print(f"Erreur lors de la génération de la réponse: {e}")
+        return None
 
-    print(f"Reponse: {response['content']}")
-    page_invitee()
+    content = response.get("content", response)
+
+    # On construit un petit résumé compact à ré-afficher en haut du prochain menu
+    header = (
+        "Dernière interaction (mode invité)\n"
+        "-------------------------------\n"
+        f"Vous : {prompt}\n\n"
+        f"Réponse :\n{content}\n"
+    )
+
+    print("\n--- Réponse ---")
+    print(content)
+
+    # On retourne le header au caller, qui le passera à page_invitee()
+    return header

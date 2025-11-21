@@ -2,9 +2,10 @@
 
 from cli.ui import (
     session,
-    ask_int,
     ask_optional,
     ask_yes_no,
+    ask_nonempty,
+    ask_menu,
     BackCommand,
     QuitCommand,
     reset_session,
@@ -12,99 +13,160 @@ from cli.ui import (
 )
 from cli.context import user_service, stats_service
 
-stats_service = stats_service  # pour l'analyse statique
+# pour l'analyse statique éventuelle
+stats_service = stats_service
 
+
+# ---------------------------------------------------------------------------
+# Helpers de navigation (imports locaux pour éviter les cycles)
+# ---------------------------------------------------------------------------
+
+def _go_conversations_manage() -> None:
+    from cli.pages.conversations import page_manage
+    page_manage()
+
+
+def _go_conversations_new() -> None:
+    from cli.pages.conversations import create_conversation
+    create_conversation()
+
+
+def _go_join_collab() -> None:
+    from cli.pages.collaboration import page_join_collab
+    page_join_collab()
+
+
+def _go_home() -> None:
+    from cli.pages.home import page_home
+    page_home()
+
+
+# ---------------------------------------------------------------------------
+# Espace utilisateur
+# ---------------------------------------------------------------------------
 
 def page_user_home() -> None:
     """Page principale de l'utilisateur connecté."""
     if not ensure_logged_in():
         return
+
     while True:
-        print("\n=== Espace utilisateur ===")
-        print("1) Mon compte")
-        print("2) Gestion des conversations")
-        print("3) Nouvelle conversation")
-        print("4) Rejoindre une collaboration")
-        print("9) Deconnexion")
-        print("0) Quitter")
         try:
-            choice = ask_int("Votre choix", [1, 2, 3, 4, 9, 0])
+            choix = ask_menu(
+                title="Espace utilisateur",
+                subtitle=f"Connecté en tant que {session.current_username}",
+                options=[
+                    ("Mon compte", "account"),
+                    ("Gestion des conversations", "conversations"),
+                    ("Nouvelle conversation", "new_conv"),
+                    ("Rejoindre une collaboration", "join_collab"),
+                    ("Déconnexion", "logout"),
+                    ("Quitter l'application", "quit"),
+                ],
+            )
         except BackCommand:
+            # Si on est déjà au “haut” de la navigation, on ignore /back
             return
-        if choice == 1:
+
+        if choix == "account":
             page_account()
-        elif choice == 2:
-            from cli.pages import conversations
-            conversations.page_manage()
-        elif choice == 3:
-            from cli.pages import conversations
-            conversations.create_conversation()
-        elif choice == 4:
-            from cli.pages import collaboration
-            collaboration.page_join_collab()
-        elif choice == 9:
-            print("Deconnexion effectuee.")
+
+        elif choix == "conversations":
+            _go_conversations_manage()
+
+        elif choix == "new_conv":
+            _go_conversations_new()
+
+        elif choix == "join_collab":
+            _go_join_collab()
+
+        elif choix == "logout":
+            print("Déconnexion effectuée.")
             reset_session()
             return
-        elif choice == 0:
-            from cli.pages.home import page_home
+
+        elif choix == "quit":
             raise QuitCommand()
 
+
+# ---------------------------------------------------------------------------
+# Gestion du compte
+# ---------------------------------------------------------------------------
 
 def page_account() -> None:
     """Page de gestion du compte utilisateur."""
     if not ensure_logged_in():
         return
+
     while True:
         try:
             user = user_service.get_user_by_id(session.current_user_id)
         except Exception as exc:
             print(f"Impossible de charger le compte: {exc}")
             return
+
         if not user:
             print("Utilisateur introuvable.")
             reset_session()
             return
+
         print("\n=== Mon compte ===")
-        print(f"ID: {user.id}")
-        print(f"Email: {user.mail}")
-        print(f"Nom: {user.nom}")
-        print(f"Prenom: {user.prenom}")
-        print(f"Pseudo: {user.username}")
-        print(f"Statut: {user.status}")
-        print(f"Parametre: {user.setting_param}")
+        print(f"ID       : {user.id}")
+        print(f"Email    : {user.mail}")
+        print(f"Nom      : {user.nom}")
+        print(f"Prénom   : {user.prenom}")
+        print(f"Pseudo   : {user.username}")
+        print(f"Statut   : {user.status}")
+        print(f"Paramètre assistant : {user.setting_param}")
+
         stats = _get_user_stats(user.id)
         if stats:
             print("\n--- Statistiques ---")
-            print(f"Conversations actives: {stats_service.nb_conv(user.id)}")
-            print(f"Messages envoyes: {stats_service.nb_messages(user.id)}")
-            # print(f"Taille du message moyen: {stats_service.average_message_length(user.id)} caracteres")
+            try:
+                print(f"Conversations actives: {stats_service.nb_conv(user.id)}")
+            except Exception:
+                pass
+            try:
+                print(f"Messages envoyés     : {stats_service.nb_messages(user.id)}")
+            except Exception:
+                pass
+            if "temps_passe" in stats:
+                print(f"Temps passé          : {stats['temps_passe']}")
             print("---------------------")
-        print("1) Modifier mes informations")
-        print("2) Supprimer mon compte")
-        print("9) Retour")
-        print("0) Quitter")
+
         try:
-            choice = ask_int("Votre choix", [1, 2, 9, 0])
+            choix = ask_menu(
+                title="Mon compte",
+                subtitle=None,
+                options=[
+                    ("Modifier mes informations", "edit"),
+                    ("Supprimer mon compte", "delete"),
+                    ("Retour", "back"),
+                    ("Quitter l'application", "quit"),
+                ],
+            )
         except BackCommand:
             return
-        if choice == 1:
+
+        if choix == "edit":
             update_account(user.id)
-        elif choice == 2:
+
+        elif choix == "delete":
             if ask_yes_no("Confirmer la suppression du compte ?"):
                 try:
                     user_service.delete_user(user.id)
                 except Exception as exc:
                     print(f"Echec de suppression: {exc}")
                 else:
-                    print("Compte supprime. Retour a l'accueil.")
+                    print("Compte supprimé. Retour à l'accueil.")
                     reset_session()
-                    page_home()
-
+                    _go_home()
                     return
-        elif choice == 9:
+
+        elif choix == "back":
             return
-        elif choice == 0:
+
+        elif choix == "quit":
             raise QuitCommand()
 
 
@@ -112,22 +174,26 @@ def update_account(user_id: int) -> None:
     """Mettre à jour les informations du compte utilisateur."""
     print("\n--- Modification du profil ---")
     print("Laisser vide pour conserver la valeur actuelle.")
-    try:
 
+    mail = None
+    password = None
+
+    try:
         username = ask_optional("Nouveau pseudo")
         nom = ask_optional("Nouveau nom")
-        prenom = ask_optional("Nouveau prenom")
-        setting_param = ask_optional("Nouveau parametre assistant")
-        from cli.ui import ask_nonempty
-        change_mail = ask_yes_no("Nouvel email")
+        prenom = ask_optional("Nouveau prénom")
+        setting_param = ask_optional("Nouveau paramètre assistant")
+
+        change_mail = ask_yes_no("Modifier l'email ?")
         if change_mail:
             mail = ask_nonempty("Nouvel email")
+
         change_password = ask_yes_no("Modifier le mot de passe ?")
-        password = None
         if change_password:
             password = ask_nonempty("Nouveau mot de passe")
     except BackCommand:
         return
+
     try:
         user_service.update_user(
             user_id=user_id,
@@ -139,10 +205,15 @@ def update_account(user_id: int) -> None:
             password_plain=password,
         )
     except Exception as exc:
-        print(f"Echec de mise a jour: {exc}")
+        print(f"Echec de mise à jour: {exc}")
         return
-    print("Profil mis a jour.")
 
+    print("Profil mis à jour.")
+
+
+# ---------------------------------------------------------------------------
+# Statistiques utilisateur
+# ---------------------------------------------------------------------------
 
 def _get_user_stats(user_id: int) -> dict:
     """Récupérer les statistiques de l'utilisateur."""

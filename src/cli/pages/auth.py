@@ -3,19 +3,39 @@
 from cli.ui import (
     ask_nonempty,
     ask_optional,
-    ask_int,
-    ask_yes_no,
+    ask_menu,
     BackCommand,
     QuitCommand,
     session,
-    reset_session,
-    ensure_logged_in,
 )
-from cli.context import user_service, user_dao, auth_service
-from cli.pages import home
-from cli.pages import collaboration
-from cli.pages import user as user_pages
+from cli.context import user_service, auth_service
 
+
+# ---------------------------------------------------------------------------
+# Navigation interne (imports locaux pour éviter les cycles)
+# ---------------------------------------------------------------------------
+
+def _go_home() -> None:
+    """Retour au menu d'accueil."""
+    from cli.pages.home import page_home
+    page_home()
+
+
+def _go_user_home() -> None:
+    """Aller à l'espace utilisateur."""
+    from cli.pages.user import page_user_home
+    page_user_home()
+
+
+def _go_join_collab() -> None:
+    """Aller à la page de join collaboration."""
+    from cli.pages.collaboration import page_join_collab
+    page_join_collab()
+
+
+# ---------------------------------------------------------------------------
+# Connexion
+# ---------------------------------------------------------------------------
 
 def page_login() -> None:
     """Page de connexion utilisateur."""
@@ -30,45 +50,55 @@ def page_login() -> None:
         user = user_service.authenticate_user(mail, password)
         if not user:
             print("Identifiants invalides.")
-            home.page_home()
+            _go_home()
             return
-        if getattr(user, "status", "active") == "banni":
+
+        status = getattr(user, "status", "active")
+        if status == "banni":
             print("Votre compte a été banni. Connexion impossible.")
-            home.page_home()
+            _go_home()
             return
-        if getattr(user, "status", "active") == "deleted":
+        if status == "deleted":
             print("Votre compte a été supprimé. Connexion impossible.")
-            home.page_home()
+            _go_home()
             return
+
     except Exception as e:
         print(f"Erreur interne lors de la connexion : {e}")
-        home.page_home()
+        _go_home()
         return
 
+    # Mise à jour de la session
     session.current_user_id = getattr(user, "id", None)
     session.current_username = getattr(user, "username", "Utilisateur")
     session.current_conv_id = None
     session.is_guest = False
-    print(f"Connexion reussie. Bonjour {session.current_username}!")
-    user_pages.page_user_home()
 
+    print(f"Connexion reussie. Bonjour {session.current_username}!")
+    _go_user_home()
+
+
+# ---------------------------------------------------------------------------
+# Inscription
+# ---------------------------------------------------------------------------
 
 def page_register() -> None:
     """Page de création de compte utilisateur."""
     print("\n=== Creation de compte ===")
 
+    # Username
     while True:
         try:
-            username = ask_nonempty("Nom d'utilisateur")
-            username = username.strip()
+            username = ask_nonempty("Nom d'utilisateur").strip()
             try:
                 auth_service.check_user_username(None, username)
                 break
             except ValueError as ve:
                 print(f"Nom d'utilisateur invalide: {ve}")
-
         except BackCommand:
             return
+
+    # Nom
     while True:
         try:
             nom = ask_optional("Nom (optionnel)")
@@ -79,6 +109,8 @@ def page_register() -> None:
                 print(f"Nom invalide: {ve}")
         except BackCommand:
             return
+
+    # Prénom
     while True:
         try:
             prenom = ask_optional("Prenom (optionnel)")
@@ -89,10 +121,11 @@ def page_register() -> None:
                 print(f"Prenom invalide: {ve}")
         except BackCommand:
             return
+
+    # Email
     while True:
         try:
-            mail = ask_nonempty("Email")
-            mail = mail.strip().lower()
+            mail = ask_nonempty("Email").strip().lower()
             try:
                 auth_service.check_user_email(None, mail)
                 break
@@ -100,6 +133,8 @@ def page_register() -> None:
                 print(f"Email invalide: {ve}")
         except BackCommand:
             return
+
+    # Mot de passe
     while True:
         try:
             password = ask_nonempty("Mot de passe")
@@ -110,6 +145,8 @@ def page_register() -> None:
                 print(f"Mot de passe invalide: {ve}")
         except BackCommand:
             return
+
+    # Création en base
     try:
         user_service.create_user(
             mail=mail,
@@ -121,24 +158,39 @@ def page_register() -> None:
     except Exception as exc:
         print(f"Echec de creation: {exc}")
         return
+
     print("Compte cree avec succes. Vous pouvez maintenant vous connecter.")
 
 
+# ---------------------------------------------------------------------------
+# Mode invité
+# ---------------------------------------------------------------------------
+
 def page_guest_home() -> None:
     """Page d'accueil en mode invité."""
-    print("\n=== Mode invite ===")
-    print("Certaines actions exigent un compte utilisateur.")
-    print("1) Rejoindre une collaboration")
-    print("9) Retour accueil")
-    print("0) Quitter")
+    session.is_guest = True
+
     try:
-        choice = ask_int("Votre choix", [1, 9, 0])
+        choix = ask_menu(
+            title="Mode invite",
+            subtitle="Certaines actions exigent un compte utilisateur.",
+            options=[
+                ("Rejoindre une collaboration", "join_collab"),
+                ("Retour accueil", "home"),
+                ("Quitter l'application", "quit"),
+            ],
+        )
     except BackCommand:
-        return
-    if choice == 1:
-        collaboration.page_join_collab()
-    elif choice == 9:
+        # Retour au menu appelant
         session.is_guest = False
         return
-    elif choice == 0:
+
+    if choix == "join_collab":
+        _go_join_collab()
+
+    elif choix == "home":
+        session.is_guest = False
+        _go_home()
+
+    elif choix == "quit":
         raise QuitCommand()

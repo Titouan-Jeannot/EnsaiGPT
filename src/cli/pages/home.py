@@ -1,27 +1,49 @@
 # src/cli/pages/home.py
 
-from cli.ui import ask_int, BackCommand, QuitCommand, session
-from cli.pages import auth  # OK : sous-module auth, pas de cycle ici
+from cli.ui import ask_menu, BackCommand, QuitCommand
+
+
+def _go_login():
+    from cli.pages.auth import page_login
+    page_login()
+
+
+def _go_register():
+    from cli.pages.auth import page_register
+    page_register()
+
+
+def _go_invitee():
+    from cli.pages.invitee import page_invitee
+    page_invitee()
+
 
 def page_home() -> None:
     """Page d'accueil principale."""
-    print("\n=== Accueil ===")
-    print("1) Connexion")
-    print("2) Creation de compte")
-    print("3) Mode invite")
-    print("0) Quitter")
-    try:
-        choice = ask_int("Votre choix", [1, 2, 3, 0])
-    except BackCommand:
-        return
+    while True:
+        try:
+            choix = ask_menu(
+                title="Accueil",
+                subtitle="Bienvenue sur EnsaiGPT",
+                options=[
+                    ("Connexion", "login"),
+                    ("Création de compte", "register"),
+                    ("Mode invité", "invite"),
+                    ("Quitter l'application", "quit"),
+                ],
+            )
+        except BackCommand:
+            # retour impossible → on reste sur la page d'accueil
+            continue
 
-    if choice == 1:
-        auth.page_login()
-    elif choice == 2:
-        auth.page_register()
-    elif choice == 3:
-        # import LOCAL pour éviter l'import circulaire
-        from cli.pages.invitee import page_invitee
-        page_invitee()
-    elif choice == 0:
-        raise QuitCommand()
+        if choix == "login":
+            _go_login()
+
+        elif choix == "register":
+            _go_register()
+
+        elif choix == "invite":
+            _go_invitee()
+
+        elif choix == "quit":
+            raise QuitCommand()

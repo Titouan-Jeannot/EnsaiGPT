@@ -10,6 +10,7 @@ from cli.ui import (
     ask_nonempty,
     ask_optional,
     ask_yes_no,
+    ask_menu,
     BackCommand,
     QuitCommand,
     ensure_logged_in,
@@ -66,12 +67,27 @@ def page_conversation(conv_id: int) -> None:
         print(f"Active: {'Oui' if conversation.is_active else 'Non'}")
 
         print("\n=== Statistiques de la conversation ===")
-        print(f"Messages totaux: {stats_service.nb_message_conv(conv_id)}")
-        print(f"Messages envoyes par vous: {stats_service.nb_messages_de_user_par_conv(session.current_user_id, conv_id)}")
-        print(f"Collaborateurs: {stats_service.count_collaborators_by_conv(conv_id)}")
+        try:
+            nb_total = stats_service.nb_message_conv(conv_id)
+        except Exception:
+            nb_total = "?"
+        try:
+            nb_user = stats_service.nb_messages_de_user_par_conv(
+                session.current_user_id, conv_id
+            )
+        except Exception:
+            nb_user = "?"
+        try:
+            nb_collabs = stats_service.count_collaborators_by_conv(conv_id)
+        except Exception:
+            nb_collabs = "?"
+
+        print(f"Messages totaux          : {nb_total}")
+        print(f"Messages envoyés par vous: {nb_user}")
+        print(f"Collaborateurs           : {nb_collabs}")
         print("---------------------")
 
-
+        # Droits actuels
         try:
             is_admin = collab_service.is_admin(session.current_user_id, conv_id)
         except Exception:
@@ -98,8 +114,9 @@ def page_conversation(conv_id: int) -> None:
             display_messages(messages)
         except Exception as exc:
             print(f"Impossible de récupérer les messages : {exc}")
+            messages = []
 
-        # Menu si banni
+        # Menu si banni (lecture seule + sortie)
         if is_banni:
             print("Vous êtes banni — en lecture seule.")
             print("9) Retour")
@@ -114,54 +131,62 @@ def page_conversation(conv_id: int) -> None:
                 raise QuitCommand()
             continue
 
-        # Menu principal
+        # Menu principal (version menu déroulant)
+        options = []
         if is_writer or is_admin:
-            print("1) Envoyer un message")
+            options.append(("Envoyer un message", "send_msg"))
         else:
-            print("1) Envoyer un message (lecture seule)")
+            options.append(("Envoyer un message (lecture seule - refusé)", "send_denied"))
 
-        print("2) Donner un feedback")
-        print("3) Collaborateurs")
+        options.append(("Donner un feedback", "feedback"))
+        options.append(("Voir / gérer les collaborateurs", "collabs"))
 
         if is_admin:
-            print("4) Partager la conversation")
-            print("5) Actions (exporter / paramétrage / quitter / supprimer)")
+            options.append(("Partager la conversation", "share"))
+            options.append(("Actions : exporter / paramétrage / quitter / supprimer", "actions"))
         else:
-            print("4) Partager la conversation (admin requis)")
-            print("5) Actions (exporter / quitter)")
+            options.append(("Partager la conversation (admin requis)", "share_denied"))
+            options.append(("Actions : exporter / quitter", "actions"))
 
-
-        print("9) Retour")
-        print("0) Quitter")
+        options.append(("Retour", "back"))
+        options.append(("Quitter l'application", "quit"))
 
         try:
-            choice = ask_int("Votre choix", [1, 2, 3, 4, 5, 9, 0])
+            choix = ask_menu(
+                title="Menu conversation",
+                subtitle=f"Conversation #{conversation.id_conversation}",
+                options=options,
+            )
         except BackCommand:
             return
 
         # Routing des actions
-        if choice == 1:
+        if choix == "send_msg":
             if is_writer or is_admin:
                 send_user_message(conv_id)
             else:
                 print("Vous n'avez pas les droits d'écriture dans cette conversation.")
-        elif choice == 2:
+        elif choix == "send_denied":
+            print("Vous n'avez pas les droits d'écriture dans cette conversation.")
+        elif choix == "feedback":
             feedback_pages.add_feedback_flow(conv_id, messages)
-        elif choice == 3:
-            from cli.pages import collaboration
-            collaboration.show_collaborators(conv_id)
-        elif choice == 4:
+        elif choix == "collabs":
+            from cli.pages.collaboration import show_collaborators
+            show_collaborators(conv_id)
+        elif choix == "share":
             if is_admin:
-                from cli.pages import collaboration
-                collaboration.share_conversation(conv_id)
+                from cli.pages.collaboration import share_conversation
+                share_conversation(conv_id)
             else:
                 print("Action réservée aux administrateurs.")
-        elif choice == 5:
+        elif choix == "share_denied":
+            print("Action réservée aux administrateurs.")
+        elif choix == "actions":
             if conversation_actions(conv_id):
                 return
-        elif choice == 9:
+        elif choix == "back":
             return
-        elif choice == 0:
+        elif choix == "quit":
             raise QuitCommand()
 
 
@@ -174,7 +199,7 @@ def display_messages(messages: List) -> None:
         print("Aucun message pour le moment.")
         return
 
-    print("\n--- Derniers messages ---")
+    print("\n--- Derniers messages (20 plus récents) ---")
     username_cache = {}
 
     for message in reversed(messages):
@@ -239,7 +264,12 @@ def send_user_message(conv_id: int) -> None:
 # Actions conversation : exporter / paramétrage / quitter / supprimer
 # ------------------------------------------------------------------
 def conversation_actions(conv_id: int) -> bool:
-    """Gérer les actions avancées d'une conversation."""
+    """
+    Gérer les actions avancées d'une conversation.
+
+    Retourne True si la page doit se fermer (ex: conversation quittée ou supprimée),
+    False sinon.
+    """
     try:
 
         # Fonction interne factorisant l'export
@@ -274,10 +304,17 @@ def conversation_actions(conv_id: int) -> bool:
             else:
                 print(f"✅ Conversation exportée dans : {full_path}")
 
+        # On vérifie tout de suite le statut admin
+        try:
+            is_admin = collab_service.is_admin(session.current_user_id, conv_id)
+        except Exception:
+            is_admin = False
+
         # -----------------------------------------------------
         # Menu NON admin
         # -----------------------------------------------------
-        if not collab_service.is_admin(session.current_user_id, conv_id):
+        if not is_admin:
+            # menu simple, pas besoin de ask_menu ici
             print("1) Exporter la conversation")
             print("2) Quitter la conversation")
             print("9) Annuler")
@@ -292,8 +329,12 @@ def conversation_actions(conv_id: int) -> bool:
 
             if choice == 1:
                 _export_conv()
+
             elif choice == 2:
-                if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(session.current_user_id, conv_id):
+                # cas limite : utilisateur non admin mais _count_admins + is_admin dans code existant
+                if collab_service._count_admins(conv_id) <= 1 and collab_service.is_admin(
+                    session.current_user_id, conv_id
+                ):
                     print("Vous êtes le seul administrateur — vous ne pouvez pas quitter.")
                     return False
                 if ask_yes_no("Quitter la conversation ?"):
@@ -329,27 +370,36 @@ def conversation_actions(conv_id: int) -> bool:
             elif choice == 2:
                 print("Voici le prompt système actuel de la conversation :")
                 conversation = conv_service.get_conversation_by_id(
-                conv_id, session.current_user_id
+                    conv_id, session.current_user_id
                 )
 
                 if not conversation.setting_conversation:
-                    print("Aucun prompt système défini pour la conversation. Chaque utilisateur utilise son propre prompt système.")
-                print(conversation.setting_conversation)
+                    print(
+                        "Aucun prompt système défini pour la conversation. "
+                        "Chaque utilisateur utilise son propre prompt système."
+                    )
+                else:
+                    print(conversation.setting_conversation)
 
                 try:
                     is_modifier_prompt = ask_yes_no("Voulez-vous le modifier ?")
                 except BackCommand:
                     return False
+
                 if not is_modifier_prompt:
                     return False
+
                 try:
-                    new_setting = ask_optional("Nouveau prompt système (laisser vide pour garder le prompt système de chaque utilisateur)")
-                    conv_service.update_conversation_setting(conv_id, session.current_user_id, new_setting)
-
+                    new_setting = ask_optional(
+                        "Nouveau prompt système (laisser vide pour garder le prompt système de chaque utilisateur)"
+                    )
+                    conv_service.update_conversation_setting(
+                        conv_id, session.current_user_id, new_setting
+                    )
                     print("Prompt système changé avec succès.")
-
                 except BackCommand:
                     return False
+
             elif choice == 3:
                 if collab_service._count_admins(conv_id) <= 1:
                     print("Impossible : vous êtes le seul admin.")
