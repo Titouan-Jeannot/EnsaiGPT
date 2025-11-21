@@ -244,8 +244,6 @@ def share_conversation(conv_id: int) -> None:
         return
 
     print("\n--- Partage de la conversation ---")
-    print(f"Token lecture  : {conversation.token_viewer}")
-    print(f"Token écriture : {conversation.token_writter}")
 
     # Proposer une invitation directe par id
     try:

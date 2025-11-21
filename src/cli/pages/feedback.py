@@ -1,16 +1,10 @@
 # src/cli/pages/feedback.py
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
 
 from ObjetMetier.Feedback import Feedback
-from cli.ui import (
-    ask_yes_no,
-    ask_optional,
-    ask_menu,
-    BackCommand,
-    session,
-)
+from cli.ui import ask_yes_no, ask_optional, BackCommand, session
 from cli.context import feedback_dao  # pour l'instant, DAO direct
 
 
@@ -29,7 +23,7 @@ def build_feedback_object(
             created_at=created_at,
         )
     except Exception:
-        # Fallback très défensif si le constructeur exige un id non None
+        # fallback en cas de problème de constructeur
         return Feedback(
             id_feedback=123,
             id_user=user_id,
@@ -40,55 +34,41 @@ def build_feedback_object(
         )
 
 
-def add_feedback_flow(conv_id: int, messages: List) -> None:
-    """Flux pour ajouter un feedback sur un message agent."""
+def add_feedback_flow(conv_id: int, messages: List) -> Tuple[bool, Optional[str]]:
+    """
+    Flux pour ajouter un feedback sur un message agent.
+
+    Retourne (success, message_notification).
+    """
     agent_messages = [msg for msg in messages if getattr(msg, "is_from_agent", False)]
     if not agent_messages:
-        print("Aucun message agent disponible pour feedback.")
-        return
+        msg = "Aucun message agent disponible pour feedback."
+        print(msg)
+        return False, msg
 
-    # Message par défaut = dernier message agent
     default = agent_messages[0]
     print(f"Message agent par défaut: ID {default.id_message} -> {default.message}")
+
     try:
         use_default = ask_yes_no("Utiliser ce message ?")
     except BackCommand:
-        return
+        return False, None
 
     if use_default:
         target_id = default.id_message
     else:
-        # On propose un petit menu déroulant pour choisir le message agent
-        options = []
-        for msg in agent_messages:
-            label = f"ID {msg.id_message} – {msg.message[:60]}"
-            options.append((label, str(msg.id_message)))
-        options.append(("Annuler", "cancel"))
-
+        ids = [msg.id_message for msg in agent_messages]
+        from cli.ui import ask_int
         try:
-            choix = ask_menu(
-                title="Choisir un message agent",
-                subtitle="Sélectionnez le message sur lequel donner un feedback",
-                options=options,
-            )
+            target_id = ask_int("Choisir ID du message agent", ids)
         except BackCommand:
-            return
+            return False, None
 
-        if choix == "cancel":
-            return
-
-        try:
-            target_id = int(choix)
-        except ValueError:
-            print("Choix invalide.")
-            return
-
-    # Like / dislike + commentaire
     try:
         liked = ask_yes_no("Like ?")
         comment = ask_optional("Commentaire (optionnel)") or ""
     except BackCommand:
-        return
+        return False, None
 
     feedback_obj = build_feedback_object(
         user_id=session.current_user_id,
@@ -98,9 +78,12 @@ def add_feedback_flow(conv_id: int, messages: List) -> None:
     )
 
     try:
-        _ = feedback_dao.create(feedback_obj)
+        result = feedback_dao.create(feedback_obj)
     except Exception as exc:
-        print(f"Echec d'enregistrement du feedback: {exc}")
-        return
+        msg = f"Echec d'enregistrement du feedback: {exc}"
+        print(msg)
+        return False, msg
 
-    print("Feedback enregistré avec succès.")
+    msg = "Feedback enregistré avec succès."
+    print(msg)
+    return True, msg

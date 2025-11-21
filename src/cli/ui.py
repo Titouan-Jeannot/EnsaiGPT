@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import termios
 import tty
@@ -12,12 +13,12 @@ from typing import Optional, List, Dict, Any, Tuple
 # Exceptions de navigation
 # ----------------------------------------------------
 class BackCommand(Exception):
-    """Lancé quand l'utilisateur veut revenir en arrière (/back ou 'b')."""
+    """Lancé quand l'utilisateur veut revenir en arrière (/back, 'b', ESC)."""
     pass
 
 
 class QuitCommand(Exception):
-    """Lancé quand l'utilisateur veut quitter l'appli (/quit ou 'q')."""
+    """Lancé quand l'utilisateur veut quitter l'appli (/quit, 'q')."""
     pass
 
 
@@ -33,6 +34,14 @@ class Session:
 
 
 session = Session()
+
+
+# ----------------------------------------------------
+# Helpers terminal
+# ----------------------------------------------------
+def clear_terminal() -> None:
+    """Efface l'écran du terminal (mais l'historique reste scrollable)."""
+    os.system("cls" if os.name == "nt" else "clear")
 
 
 # ----------------------------------------------------
@@ -151,14 +160,14 @@ def _getch() -> str:
 
 
 # ----------------------------------------------------
-# Menu déroulant avec flèches (↑/↓ + Entrée)
+# Menu déroulant avec flèches (↑/↓ + Entrée) + clear
 # ----------------------------------------------------
 def ask_menu(
     title: str,
     subtitle: Optional[str],
     options: List[Tuple[str, str]],
-    clear_screen: bool = False,   # accepté pour compat, mais ignoré
-    header: Optional[str] = None, # texte optionnel affiché avant le menu
+    clear_screen: bool = True,
+    header: Optional[str] = None,
 ) -> str:
     """
     Affiche un menu déroulant avec navigation via ↑/↓ ou k/j et validation avec Entrée.
@@ -168,6 +177,7 @@ def ask_menu(
     - b -> BackCommand
     - q -> QuitCommand
     - ESC -> BackCommand
+    - clear_screen : si True, efface le terminal à chaque rafraîchissement
     """
 
     if not options:
@@ -176,10 +186,8 @@ def ask_menu(
     index = 0
 
     while True:
-        # IMPORTANT : on NE FAIT PAS de clear()
-        # donc tout l'historique (messages, prints, etc.) reste visible/scrollable.
-
-        print()  # petite séparation visuelle
+        if clear_screen:
+            clear_terminal()
 
         if header:
             print(header)
@@ -230,7 +238,7 @@ def ask_menu(
         if ch == "\x1b":
             raise BackCommand()
 
-        # Autres touches : ignorées, on réaffiche juste un menu plus bas.
+        # Autres touches : ignorées, on réaffiche un écran propre au tour suivant.
 
 
 # ----------------------------------------------------
