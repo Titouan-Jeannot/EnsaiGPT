@@ -111,9 +111,17 @@ class AuthService:
 
         # blocage si délai non écoulé depuis dernier échec pour cet email
         last = self._last_failed.get(mail)
-        now = datetime.now(timezone.utc)
-        if last and (now - last).total_seconds() < self.RETRY_DELAY_SECONDS:
-            return None
+        now_ts = time.time()
+        if last is not None:
+            # homogénéise le type pour éviter les erreurs de soustraction (tests peuvent injecter un float)
+            if isinstance(last, datetime):
+                last_ts = last.timestamp()
+            elif isinstance(last, (int, float)):
+                last_ts = float(last)
+            else:
+                last_ts = None
+            if last_ts is not None and (now_ts - last_ts) < self.RETRY_DELAY_SECONDS:
+                return None
 
         user = self._get_user_by_mail(mail)
         if not user:
@@ -131,7 +139,7 @@ class AuthService:
 
         if self.verify_mdp(password, stored_hash, stored_salt):
             # succès -> effacer timestamp d'échec
-            user.last_login = now
+            user.last_login = datetime.fromtimestamp(now_ts, tz=timezone.utc)
             self.user_dao.update(user)
             if mail in self._last_failed:
                 del self._last_failed[mail]
@@ -143,7 +151,7 @@ class AuthService:
 
     def _register_failed(self, mail: str):
         """Enregistre le timestamp du dernier échec (pas de compteur)."""
-        self._last_failed[mail] = datetime.now(timezone.utc)
+        self._last_failed[mail] = time.time()
 
     # ----- Méthodes utilitaires appelées par UserService -----
     def check_user_exists(self, user_id: int):
@@ -236,8 +244,8 @@ class AuthService:
             raise ValueError("Utilisateur introuvable")
         # ne pas autoriser si status est 'banni' ou 'inactive'
         status = getattr(user, "status", None)
-        if status and status.lower() in ("banni", "deleted"):
-            raise ValueError("Utilisateur non modifiable (banni/deleted)")
+        if status and status.lower() in ("banni", "deleted", "inactive"):
+            raise ValueError("Utilisateur non modifiable (banni/deleted/inactive)")
         return True
 
     def check_user_can_delete(self, user_id: int):

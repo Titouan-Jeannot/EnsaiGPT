@@ -39,11 +39,11 @@ class ConversationService:
 
     def _ensure_admin(self, user_id: int, conversation_id: int, action: str) -> None:
         """Vérifie que l'utilisateur est admin de la conversation."""
-        if self.collaboration_service and self.collaboration_service.is_admin(
-            user_id, conversation_id
-        ):
+        if not self.collaboration_service:
             return
-        raise PermissionError(
+        if self.collaboration_service.is_admin(user_id, conversation_id):
+            return
+        raise ValueError(
             f"Droits d'administration requis pour {action} cette conversation."
         )
 

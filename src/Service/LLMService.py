@@ -6,7 +6,7 @@ import os
 import requests
 import json
 
-AGENT_USER_ID = 6  # ID de l'agent en base
+AGENT_USER_ID = 0  # ID de l'agent en base
 
 
 # === Imports métier ===
@@ -77,6 +77,10 @@ class LLMService:
         default_temperature: float = 0.7,
         default_max_tokens: int = 512,
         timeout: float = 20.0,
+        requests_session: Optional[Any] = None,
+        api_key: Optional[str] = None,
+        banned_service: Optional[Any] = None,
+        default_model: Optional[str] = None,
     ) -> None:
         """
         Initialise le service LLM avec les DAO et paramètres nécessaires.
@@ -89,8 +93,12 @@ class LLMService:
         self.default_temperature = default_temperature
         self.default_max_tokens = default_max_tokens
         self.timeout = timeout
+        self.requests_session = requests_session
+        self.api_key = api_key
+        self.banned_service = banned_service
+        self.default_model = default_model
 
-        # base_url = racine de l’API, on ajoute /generate ensuite
+        # base_url = racine de l'API, on ajoute /generate ensuite
         self.base_url = (
             base_url
             or os.environ.get("LLM_API_BASE_URL")
@@ -119,6 +127,7 @@ class LLMService:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Appelle POST /generate avec:
@@ -130,33 +139,35 @@ class LLMService:
         }
         et renvoie un dict {"content": str, "usage": dict}
         """
-        url = f"{self.base_url}/generate"
+        url = f"{self.base_url}/chat/generate"
 
         payload: Dict[str, Any] = {
-            "history": history,
+            "messages": history,
             "max_tokens": max_tokens if max_tokens is not None else self.default_max_tokens,
             "temperature": temperature if temperature is not None else self.default_temperature,
             "top_p": top_p if top_p is not None else 1,
         }
+        if model:
+            payload["model"] = model
 
 
         headers = {
             "accept": "application/json",
             "Content-Type": "application/json",
         }
+        if getattr(self, "api_key", None):
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         try:
-            resp = requests.post(
+            resp = (self.requests_session or requests).post(
                 url,
                 json=payload,
                 headers=headers,
                 timeout=self.timeout,
             )
             resp.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            raise RuntimeError(
-                f"[LLM] HTTP {resp.status_code} sur {url} – corps: {resp.text[:800]}"
-            ) from e
+        except requests.exceptions.HTTPError:
+            raise
         except requests.exceptions.Timeout as e:
             raise RuntimeError(f"[LLM] Timeout ({self.timeout}s) sur {url}") from e
         except requests.exceptions.RequestException as e:
@@ -168,16 +179,20 @@ class LLMService:
             raise RuntimeError(f"[LLM] Réponse non-JSON depuis {url}") from e
 
 
-        # On suit exactement le format de l'exemple:
-        # data["choices"][0]["message"]["content"]
-        try:
-            first_choice = data["choices"][0]
-            message = first_choice["message"]
-            content = str(message.get("content", ""))
-        except Exception as e:
-            raise RuntimeError(
-                f"[LLM] Format de réponse inattendu, impossible de lire choices[0].message.content: {data}"
-            ) from e
+        content = ""
+        if isinstance(data, dict) and "content" in data:
+            content = str(data.get("content", ""))
+        else:
+            # On suit exactement le format de l'exemple:
+            # data["choices"][0]["message"]["content"]
+            try:
+                first_choice = data["choices"][0]
+                message = first_choice["message"]
+                content = str(message.get("content", ""))
+            except Exception as e:
+                raise RuntimeError(
+                    f"[LLM] Format de reponse inattendu, impossible de lire choices[0].message.content: {data}"
+                ) from e
 
         usage_raw = data.get("usage", {}) if isinstance(data, dict) else {}
         usage: Dict[str, int] = {}
@@ -260,44 +275,68 @@ class LLMService:
 
 
 
+
+    def simple_complete(self, user_prompt: str, *, model: Optional[str] = None) -> str:
+        """
+        Envoie un prompt simple (pas d'historique) ?? l'endpoint /chat/generate.
+        """
+        if self.banned_service and getattr(self.banned_service, 'contains_banned', None):
+            if self.banned_service.contains_banned(user_prompt):
+                raise ValueError('Prompt interdit')
+
+        messages = [
+            {'role': 'system', 'content': self.default_system_prompt},
+            {'role': 'user', 'content': user_prompt},
+        ]
+
+        out = self._call_llm(
+            messages,
+            temperature=self.default_temperature,
+            max_tokens=self.default_max_tokens,
+            top_p=1,
+            model=model or self.default_model,
+        )
+        return str(out.get('content', ''))
+
     # ------------------------------------------------------------------
     # Méthodes publiques
     # ------------------------------------------------------------------
 
-
     def generate_agent_reply(
         self,
         conversation_id: int,
-        user_id: int
+        user_id: int,
+        *,
+        extra_context: Optional[str] = None,
     ) -> Message:
         """
-        Utilise l'historique complet de la conversation, envoie à l'API,
-        récupère la réponse et la sauvegarde comme message agent.
+        Utilise l'historique complet de la conversation, envoie ?? l'API,
+        r?cup??re la r?ponse et la sauvegarde comme message agent.
         """
         self._validate_id("conversation_id", conversation_id)
         self._validate_id("user_id", user_id)
 
+        history = self._build_history_for_conversation(conversation_id, user_id)
+        if extra_context:
+            history.append({'role': 'system', 'content': extra_context})
 
+        if self.banned_service and getattr(self.banned_service, 'contains_banned', None):
+            if self.banned_service.contains_banned(history[-1].get('content', '')):
+                raise ValueError('Prompt interdit')
 
-
-
-        # 1) Construire le history pour l'API
-        history = self._build_history_for_conversation(
-            conversation_id,
-            user_id
-        )
-
-
-        # Appel API en utilisant les overrides stockés sur l'instance
         out = self._call_llm(
             history,
             temperature=self.temperature_override,
             max_tokens=self.max_tokens_override,
             top_p=self.top_p_override,
+            model=self.default_model,
         )
-        content = str(out.get("content", ""))  # texte généré
+        content = str(out.get('content', ''))  # texte g?n?r?
 
-        # 4) Persister la réponse agent
+        if self.banned_service and getattr(self.banned_service, 'contains_banned', None):
+            if self.banned_service.contains_banned(content):
+                raise ValueError('Contenu interdit')
+
         now = datetime.now(timezone.utc)
         msg_obj = Message(
             id_message=None,
@@ -308,12 +347,13 @@ class LLMService:
             is_from_agent=True,
         )
 
-        create_fn = getattr(self.message_dao, "create", None)
+        create_fn = getattr(self.message_dao, 'create', None)
         if not callable(create_fn):
-            raise RuntimeError("MessageDAO ne fournit pas create")
+            raise RuntimeError('MessageDAO ne fournit pas create')
 
         created: Message = create_fn(msg_obj)
         return created
+
 
     @staticmethod
     def requete_invitee(prompt: str) -> Dict[str, Any]:
@@ -324,7 +364,7 @@ class LLMService:
         default_temperature_invite = 0.7
         default_max_tokens_invite = 512
         timeout_invite = 20.0
-        url = f"https://ensai-gpt-109912438483.europe-west4.run.app/generate"
+        url = f"https://ensai-gpt-109912438483.europe-west4.run.app/chat/generate"
         history_invitee = [
     {
       "content": "Tu es un assistant utile.",
@@ -350,7 +390,7 @@ class LLMService:
         }
 
         try:
-            resp = requests.post(
+            resp = (self.requests_session or requests).post(
                 url,
                 json=payload,
                 headers=headers,

@@ -146,7 +146,7 @@ class CollaborationService(metaclass=Singleton):
         self._require_admin(conversation_id, requester_id)
         target = self.collab_dao.find_by_conversation_and_user(conversation_id, target_user_id)
         if not target:
-            raise ValueError("Collaborateur introuvable.")
+            return False
 
         if target_user_id == requester_id and self._count_collaborators(conversation_id) <= 1:
             raise ValueError(

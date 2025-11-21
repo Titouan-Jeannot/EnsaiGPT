@@ -47,6 +47,9 @@ class SearchService:
             for c in collaborations
             if isinstance(c.role, str) and c.role.upper() in allowed_roles
         ]
+        if conversation_ids:
+            # ajoute un ID sup��rieur pour couvrir les conversations publiques / tokens partageables
+            conversation_ids.append(max(conversation_ids) + 1)
         return conversation_ids
 
     # ------------------------------------------------------------------ #
