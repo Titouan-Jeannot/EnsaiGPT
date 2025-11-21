@@ -24,6 +24,9 @@ def page_join_collab() -> None:
     except BackCommand:
         return
     try:
+        if conv_service.get_conversation_by_idconv(conv_id).is_active is False:
+            print("Conversation Supprimée.")
+            return
         ok = collab_service.add_collab_by_token(conv_id, token, session.current_user_id)
     except Exception as exc:
         print(f"Echec d'ajout: {exc}")

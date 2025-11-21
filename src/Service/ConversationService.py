@@ -197,3 +197,11 @@ class ConversationService:
         if not self.conversation_dao.has_write_access(conversation_id, user_id):
             raise ValueError("Droits d'écriture requis pour modifier le paramètre de configuration")
         self.conversation_dao.update_setting(conversation_id, new_setting)
+
+    def get_conversation_by_idconv(self, conversation_id: int) -> Optional[Conversation]:
+        """Récupère une conversation par son ID sans vérifier les droits utilisateur."""
+        if not isinstance(conversation_id, int) or conversation_id < 0:
+            raise ValueError("ID de conversation invalide")
+
+        conversation = self.conversation_dao.get_by_id(conversation_id)
+        return conversation
