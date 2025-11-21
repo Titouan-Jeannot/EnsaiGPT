@@ -11,7 +11,7 @@ def _expected_test_db_name():
     return "test_db"
 
 
-@pytest.mark.db
+# @pytest.mark.db
 @pytest.mark.integration
 def test_current_database_is_test_db(monkeypatch):
     # Force le contexte pytest -> DB de test (voir DBConnector/_current_db_url)
@@ -25,7 +25,7 @@ def test_current_database_is_test_db(monkeypatch):
             assert row["db"] == _expected_test_db_name()
 
 
-@pytest.mark.db
+# @pytest.mark.db
 @pytest.mark.integration
 def test_select_and_dict_cursor(monkeypatch):
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "1")
@@ -39,7 +39,7 @@ def test_select_and_dict_cursor(monkeypatch):
             assert row["ok"] == 1
 
 
-@pytest.mark.db
+# @pytest.mark.db
 @pytest.mark.integration
 def test_commit_and_rollback(monkeypatch):
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "1")
