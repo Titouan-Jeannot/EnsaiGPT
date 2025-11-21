@@ -9,7 +9,7 @@ class Feedback:
 
         Paramètres:
         -----------
-        - id_feedback : identifiant unique du feedback
+        - id_feedback : identifiant unique du feedback (peut être None lors de la création)
         - id_user : identifiant de l'utilisateur
         - id_message : identifiant du message
         - is_like : booléen indiquant si le feedback est un like (True) ou un dislike (False)
@@ -20,8 +20,8 @@ class Feedback:
         -----------
         - ValueError : si un des paramètres est None
         """
-        if not isinstance(id_feedback, int) or id_feedback < 0:
-            raise ValueError("id_feedback must be a non-null positive integer")
+        if id_feedback is not None and (not isinstance(id_feedback, int) or id_feedback < 0):
+            raise ValueError("id_feedback must be a positive integer or None")
         if id_user is None or not isinstance(id_user, int) or id_user < 0:
             raise ValueError("id_user must be a non-null positive integer")
         if id_message is None or not isinstance(id_message, int) or id_message < 0:

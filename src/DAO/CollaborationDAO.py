@@ -15,7 +15,7 @@ class CollaborationDAO(metaclass=Singleton):
     # CRUD de base
     # -------------------------
 
-    @log
+    # @log
     def create(self, collaboration: Collaboration) -> bool:
         """
         Crée une collaboration dans la base de données.
@@ -56,7 +56,7 @@ class CollaborationDAO(metaclass=Singleton):
             logging.error(f"Erreur lors de la création de la collaboration : {e}")
             return False
 
-    @log
+    # @log
     def read(self, id_collaboration: int) -> Optional[Collaboration]:
         """
         Récupère une collaboration par son identifiant.
@@ -95,7 +95,7 @@ class CollaborationDAO(metaclass=Singleton):
             logging.error(f"Erreur lors de la lecture de la collaboration {id_collaboration} : {e}")
             return None
 
-    @log
+    # @log
     def update(self, collaboration: Collaboration) -> bool:
         """
         Met à jour une collaboration existante.
@@ -133,7 +133,7 @@ class CollaborationDAO(metaclass=Singleton):
             logging.error(f"Erreur lors de la mise à jour de la collaboration {collaboration.id_collaboration} : {e}")
             return False
 
-    @log
+    # @log
     def delete(self, id_collaboration: int) -> bool:
         """
         Supprime une collaboration par son identifiant.
@@ -167,7 +167,7 @@ class CollaborationDAO(metaclass=Singleton):
     # Méthodes supplémentaires
     # -------------------------
 
-    @log
+    # @log
     def list_all(self) -> List[Collaboration]:
         """
         Retourne la liste de toutes les collaborations.
@@ -198,7 +198,7 @@ class CollaborationDAO(metaclass=Singleton):
 
         return collaborations
 
-    @log
+    # @log
     def find_by_conversation(self, id_conversation: int) -> List[Collaboration]:
         """Retourne toutes les collaborations d’une conversation donnée."""
         collaborations = []
@@ -230,7 +230,7 @@ class CollaborationDAO(metaclass=Singleton):
 
         return collaborations
 
-    @log
+    # @log
     def find_by_user(self, id_user: int) -> List[Collaboration]:
         """Retourne toutes les collaborations d’un utilisateur donné."""
         collaborations = []
@@ -264,7 +264,7 @@ class CollaborationDAO(metaclass=Singleton):
 
         return collaborations
 
-    @log
+    # @log
     def find_by_conversation_and_user(self, id_conversation: int, id_user: int) -> Optional[Collaboration]:
         """Retourne la collaboration d’un utilisateur spécifique dans une conversation."""
         try:
@@ -295,7 +295,7 @@ class CollaborationDAO(metaclass=Singleton):
             )
             return None
 
-    @log
+    # @log
     def update_role(self, id_collaboration: int, new_role: str) -> bool:
         """Modifie uniquement le rôle d’une collaboration (enum minuscule)."""
         try:
@@ -321,7 +321,7 @@ class CollaborationDAO(metaclass=Singleton):
             return False
 
 
-    @log
+    # @log
     def delete_by_conversation_and_user(self, id_conversation: int, id_user: int) -> bool:
         """Supprime une collaboration à partir d’une paire (conversation, utilisateur)."""
         try:
@@ -343,7 +343,7 @@ class CollaborationDAO(metaclass=Singleton):
             )
             return False
 
-    @log
+    # @log
     def count_by_conversation(self, id_conversation: int) -> int:
         """Compte le nombre de collaborateurs dans une conversation."""
         try:

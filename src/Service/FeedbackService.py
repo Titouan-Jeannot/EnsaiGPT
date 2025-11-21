@@ -20,7 +20,7 @@ class FeedbackService(metaclass=Singleton):
 
     # ------------------------------ Create -------------------------------- #
 
-    @log
+    # @log
     def add_feedback(self, user_id: int, message_id: int, is_like: bool, comment: str | None) -> Feedback:
         """Valide puis délègue la création à la DAO."""
         if not isinstance(user_id, int) or user_id < 0:
@@ -34,7 +34,7 @@ class FeedbackService(metaclass=Singleton):
 
         try:
             to_create = Feedback(
-                id_feedback=0,               # conforme à ta classe (>=0)
+                id_feedback=None,               # conforme à ta classe (>=0)
                 id_user=user_id,
                 id_message=message_id,
                 is_like=is_like,
@@ -50,14 +50,14 @@ class FeedbackService(metaclass=Singleton):
 
     # --------------------------- Lists / Reads ----------------------------- #
 
-    @log
+    # @log
     def get_feedback_by_message(self, message_id: int) -> List[Feedback]:
         """Retourne tous les feedbacks liés à un message."""
         if not isinstance(message_id, int) or message_id < 0:
             raise ValueError("message_id doit être un entier positif")
         return self.dao.find_by_message(message_id)
 
-    @log
+    # @log
     def get_feedback_by_user(self, user_id: int) -> List[Feedback]:
         """Retourne tous les feedbacks laissés par un utilisateur."""
         if not isinstance(user_id, int) or user_id < 0:
@@ -66,14 +66,14 @@ class FeedbackService(metaclass=Singleton):
 
     # ------------------------------ Aggregates ----------------------------- #
 
-    @log
+    # @log
     def count_likes(self, message_id: int) -> int:
         """Compte les likes associés à un message."""
         if not isinstance(message_id, int) or message_id < 0:
             raise ValueError("message_id doit être un entier positif")
         return self.dao.count_likes(message_id)
 
-    @log
+    # @log
     def count_dislikes(self, message_id: int) -> int:
         """Compte les dislikes associés à un message."""
         if not isinstance(message_id, int) or message_id < 0:

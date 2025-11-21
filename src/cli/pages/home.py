@@ -1,5 +1,3 @@
-# src/cli/pages/home.py
-
 from cli.ui import ask_int, BackCommand, QuitCommand, session
 from cli.pages import auth  # OK : sous-module auth, pas de cycle ici
 

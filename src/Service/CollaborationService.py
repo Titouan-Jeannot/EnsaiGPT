@@ -65,25 +65,25 @@ class CollaborationService(metaclass=Singleton):
     # Vérification des rôles
     # ------------------------------
 
-    @log
+    # @log
     def is_admin(self, user_id: int, conversation_id: int) -> bool:
         """Vérifie si un utilisateur est admin dans une conversation."""
         collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
         return collab is not None and collab.role.lower() == "admin"
 
-    @log
+    # @log
     def is_writer(self, user_id: int, conversation_id: int) -> bool:
         """Vérifie si un utilisateur est writer dans une conversation."""
         collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
         return collab is not None and collab.role.lower() == "writer"
 
-    @log
+    # @log
     def is_viewer(self, user_id: int, conversation_id: int) -> bool:
         """Vérifie si un utilisateur est viewer dans une conversation."""
         collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
         return collab is not None and collab.role.lower() == "viewer"
 
-    @log
+    # @log
     def is_banni(self, user_id: int, conversation_id: int) -> bool:
         """Vérifie si un utilisateur est banni dans une conversation."""
         collab = self.collab_dao.find_by_conversation_and_user(conversation_id, user_id)
@@ -93,7 +93,7 @@ class CollaborationService(metaclass=Singleton):
     # Gestion des collaborations
     # ------------------------------
 
-    @log
+    # @log
     def create_collab(self, user_id: int, conversation_id: int, role: str) -> bool:
         """Crée une nouvelle collaboration (vérifie l'existence du user & de la conversation)."""
         try:
@@ -120,12 +120,12 @@ class CollaborationService(metaclass=Singleton):
             logging.error(f"Erreur dans create_collab : {e}")
             return False
 
-    @log
+    # @log
     def add_collaboration(self, collab: Collaboration) -> bool:
         """Ajoute une collaboration directement (objet Collaboration)."""
         return self.collab_dao.create(collab)
 
-    @log
+    # @log
     def list_collaborators(self, conversation_id: int) -> List[Collaboration]:
         """Liste tous les collaborateurs d'une conversation."""
         return self.collab_dao.find_by_conversation(conversation_id)
@@ -138,7 +138,7 @@ class CollaborationService(metaclass=Singleton):
         self._require_collaboration(conversation_id, requester_id)
         return self.list_collaborators(conversation_id)
 
-    @log
+    # @log
     def delete_collaborator(
         self, conversation_id: int, target_user_id: int, requester_id: int
     ) -> bool:
@@ -158,7 +158,7 @@ class CollaborationService(metaclass=Singleton):
         """Supprime la collaboration d'un utilisateur sans vérification de droits."""
         return self.collab_dao.delete_by_conversation_and_user(conversation_id, user_id)
 
-    @log
+    # @log
     def change_role(
         self,
         conversation_id: int,
@@ -183,7 +183,7 @@ class CollaborationService(metaclass=Singleton):
     # Vérification des tokens
     # ------------------------------
 
-    @log
+    # @log
     def verify_token_collaboration(self, conversation_id: int, token: str) -> bool:
         """
         Vérifie si un token (viewer ou writer) correspond à une conversation.

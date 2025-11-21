@@ -11,6 +11,7 @@ from cli.ui import (
     ensure_logged_in,
 )
 from cli.context import user_service, stats_service
+from cli.pages import home
 
 stats_service = stats_service  # pour l'analyse statique
 
@@ -99,7 +100,7 @@ def page_account() -> None:
                 else:
                     print("Compte supprime. Retour a l'accueil.")
                     reset_session()
-                    page_home()
+                    home.page_home()
 
                     return
         elif choice == 9:

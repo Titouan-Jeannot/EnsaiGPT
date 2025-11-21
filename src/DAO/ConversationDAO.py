@@ -68,7 +68,7 @@ class ConversationDAO(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     # CRUD                                                               #
     # ------------------------------------------------------------------ #
-    @log
+    # @log
     def create(self, conversation: Conversation, creator_user_id: Optional[int] = None) -> Conversation:
         """
         Insère une conversation et renvoie l’instance complétée.
@@ -115,7 +115,7 @@ class ConversationDAO(metaclass=Singleton):
         """Alias rétrocompatible vers get_by_id()."""
         return self.get_by_id(conversation_id)
 
-    @log
+    # @log
     def get_by_id(self, conversation_id: int) -> Optional[Conversation]:
         """Renvoie une conversation par son ID."""
         query = """
@@ -132,7 +132,7 @@ class ConversationDAO(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     # Recherches / listes                                                #
     # ------------------------------------------------------------------ #
-    @log
+    # @log
     def get_conversations_by_user(self, user_id: int) -> List[Conversation]:
         """Renvoie toutes les conversations actives liées à un utilisateur."""
         query = """
@@ -145,7 +145,7 @@ class ConversationDAO(metaclass=Singleton):
         """
         return self._fetch_many(query, {"user_id": user_id})
 
-    @log
+    # @log
     def get_conversations_by_date(self, user_id: int, target_date: datetime) -> List[Conversation]:
         """Renvoie les conversations d'un utilisateur à une date donnée (DATE(created_at) = target_date)."""
         query = """
@@ -160,7 +160,7 @@ class ConversationDAO(metaclass=Singleton):
         day: date = target_date.date()
         return self._fetch_many(query, {"user_id": user_id, "target_date": day})
 
-    @log
+    # @log
     def search_conversations_by_title(self, user_id: int, title: str) -> List[Conversation]:
         """Recherche par titre (ILIKE, insensible à la casse). Renvoie les conversations actives de l'utilisateur."""
         query = """
@@ -177,7 +177,7 @@ class ConversationDAO(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     # Mises à jour / suppression                                         #
     # ------------------------------------------------------------------ #
-    @log
+    # @log
     def update_title(self, conversation_id: int, new_title: str) -> bool:
         """Met à jour le titre d'une conversation."""
         query = """
@@ -187,13 +187,13 @@ class ConversationDAO(metaclass=Singleton):
         """
         return self._execute(query, {"titre": new_title, "id_conversation": conversation_id}) == 1
 
-    @log
+    # @log
     def delete(self, conversation_id: int) -> bool:
         """Supprime une conversation."""
         query = "DELETE FROM conversation WHERE id_conversation = %(id_conversation)s;"
         return self._execute(query, {"id_conversation": conversation_id}) == 1
 
-    @log
+    # @log
     def set_active(self, conversation_id: int, is_active: bool) -> bool:
         """Active ou désactive une conversation."""
         query = """
@@ -206,7 +206,7 @@ class ConversationDAO(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     # Contrôles d’accès                                                  #
     # ------------------------------------------------------------------ #
-    @log
+    # @log
     def has_access(self, conversation_id: int, user_id: int) -> bool:
         """Vérifie si un utilisateur a un accès (lecture ou écriture) à une conversation."""
         query = """
@@ -218,7 +218,7 @@ class ConversationDAO(metaclass=Singleton):
         """
         return self._exists(query, {"id_conversation": conversation_id, "user_id": user_id})
 
-    @log
+    # @log
     def has_write_access(self, conversation_id: int, user_id: int) -> bool:
         """Vérifie si un utilisateur a un accès en écriture à une conversation."""
         query = """
@@ -231,7 +231,7 @@ class ConversationDAO(metaclass=Singleton):
         """
         return self._exists(query, {"id_conversation": conversation_id, "user_id": user_id})
 
-    @log
+    # @log
     def add_user_access(self, conversation_id: int, user_id: int, can_write: bool) -> None:
         """Ajoute ou met à jour le rôle d’un utilisateur sur une conversation."""
         role = "writer" if can_write else "viewer"
@@ -243,7 +243,7 @@ class ConversationDAO(metaclass=Singleton):
         """
         self._execute(query, {"id_conversation": conversation_id, "id_user": user_id, "role": role})
 
-    @log
+    # @log
     def get_prompts_conversation(self, conversation_id: int) -> Optional[str]:
         """Renvoie les paramètres (settings_conversation) d’une conversation."""
         query = """
