@@ -1,108 +1,274 @@
-import unittest
-from unittest.mock import MagicMock, patch
+import pytest
+from unittest.mock import MagicMock
+from types import SimpleNamespace
 from datetime import datetime
 
-from Service.SearchService import SearchService 
-from ObjetMetier.Message import Message   # <-- correction d'import
-from ObjetMetier.Conversation import Conversation
-from ObjetMetier.Collaboration import Collaboration
-
-PATH_COLLABORATION_DAO = 'Service.SearchService.CollaborationDAO'
-PATH_MESSAGE_DAO = 'Service.SearchService.MessageDAO'
-PATH_CONVERSATION_DAO = 'Service.SearchService.ConversationDAO'
+from Service.SearchService import SearchService
 
 
-class TestSearchService:
-    """Tests unitaires pour la logique du SearchService, basés sur la méthode d'injection par patch."""
+# -------------------------------------------------------------------
+# Fixtures
+# -------------------------------------------------------------------
 
-    USER_ID = 42
-    KEYWORD = "architecture"
-    TARGET_DATE = datetime(2025, 11, 5)
-    
-    CONV_IDS_AUTORISES = [101, 102, 103, 104]
+@pytest.fixture
+def mock_message_dao():
+    return MagicMock()
 
-    COLLABORATIONS_MOCK = [
-        Collaboration(id_conversation=101, id_user=USER_ID, role="admin"),
-        Collaboration(id_conversation=102, id_user=USER_ID, role="writer"),
-        Collaboration(id_conversation=103, id_user=USER_ID, role="viewer"),
+
+@pytest.fixture
+def mock_conversation_dao():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_collaboration_dao():
+    return MagicMock()
+
+
+@pytest.fixture
+def search_service(mock_message_dao, mock_conversation_dao, mock_collaboration_dao):
+    return SearchService(
+        message_dao=mock_message_dao,
+        conversation_dao=mock_conversation_dao,
+        collaboration_dao=mock_collaboration_dao,
+    )
+
+
+# -------------------------------------------------------------------
+# _get_user_accessible_conversation_ids
+# -------------------------------------------------------------------
+
+def test_get_user_accessible_conversation_ids_roles(search_service, mock_collaboration_dao):
+    collabs = [
+        SimpleNamespace(id_conversation=1, role="admin"),
+        SimpleNamespace(id_conversation=2, role="WRITER"),
+        SimpleNamespace(id_conversation=3, role="viewer"),
+        SimpleNamespace(id_conversation=4, role="reader"),  # ignoré par SearchService actuel
+        SimpleNamespace(id_conversation=5, role="banni"),
+        SimpleNamespace(id_conversation=6, role=None),
     ]
-    
-    MESSAGE_LIST_MOCK = [Message(id_message=1, id_conversation=101, message="Message contenant architecture")]
-    CONVERSATION_LIST_MOCK = [Conversation(id_conversation=101, titre="Architecture du système")]
+    mock_collaboration_dao.find_by_user.return_value = collabs
 
-    def _get_service_and_mocks(self):
-        mock_collab_dao = MagicMock()
-        mock_message_dao = MagicMock()
-        mock_conversation_dao = MagicMock()
-        mock_collab_dao.find_by_user.return_value = self.COLLABORATIONS_MOCK
+    ids = search_service._get_user_accessible_conversation_ids(user_id=10)
 
-        search_service = SearchService(
-            message_dao=mock_message_dao,
-            conversation_dao=mock_conversation_dao,
-            collaboration_dao=mock_collab_dao
-        )
-        return search_service, mock_collab_dao, mock_message_dao, mock_conversation_dao
+    # Avec la version actuelle : seuls admin / writer / viewer sont pris
+    assert set(ids) == {1, 2, 3}
+    mock_collaboration_dao.find_by_user.assert_called_once_with(10)
 
-    def test_search_messages_by_keyword_success(self):
-        with patch(PATH_COLLABORATION_DAO, new_callable=MagicMock) as MockCollabDAO, \
-             patch(PATH_MESSAGE_DAO, new_callable=MagicMock) as MockMessageDAO:
 
-            service, mock_collab, mock_message, _ = self._get_service_and_mocks()
-            mock_message.search_by_keyword.return_value = self.MESSAGE_LIST_MOCK
+# -------------------------------------------------------------------
+# search_messages_by_keyword
+# -------------------------------------------------------------------
 
-            result = service.search_messages_by_keyword(self.USER_ID, self.KEYWORD)
+def test_search_messages_by_keyword_empty_keyword(search_service, mock_message_dao, mock_collaboration_dao):
+    res = search_service.search_messages_by_keyword(user_id=1, keyword="")
+    assert res == []
+    mock_collaboration_dao.find_by_user.assert_not_called()
+    mock_message_dao.search_by_keyword.assert_not_called()
 
-            mock_collab.find_by_user.assert_called_once_with(self.USER_ID)
-            mock_message.search_by_keyword.assert_called_once_with(
-                self.KEYWORD, 
-                self.CONV_IDS_AUTORISES
-            )
-            assert result == self.MESSAGE_LIST_MOCK
 
-    def test_search_messages_by_keyword_no_access_returns_empty(self):
-        with patch(PATH_COLLABORATION_DAO, new_callable=MagicMock) as MockCollabDAO, \
-             patch(PATH_MESSAGE_DAO, new_callable=MagicMock) as MockMessageDAO:
-            
-            service, mock_collab, mock_message, _ = self._get_service_and_mocks()
-            mock_collab.find_by_user.return_value = []
-            
-            result = service.search_messages_by_keyword(self.USER_ID, self.KEYWORD)
-            
-            assert result == []
-            mock_message.search_by_keyword.assert_not_called()
+def test_search_messages_by_keyword_no_accessible(search_service, mock_message_dao, mock_collaboration_dao):
+    mock_collaboration_dao.find_by_user.return_value = []
+    res = search_service.search_messages_by_keyword(user_id=1, keyword="test")
+    assert res == []
+    mock_message_dao.search_by_keyword.assert_not_called()
 
-    def test_search_messages_by_date_success(self):
-        with patch(PATH_COLLABORATION_DAO, new_callable=MagicMock) as MockCollabDAO, \
-             patch(PATH_MESSAGE_DAO, new_callable=MagicMock) as MockMessageDAO:
 
-            service, mock_collab, mock_message, _ = self._get_service_and_mocks()
-            mock_message.search_by_date.return_value = self.MESSAGE_LIST_MOCK
+def test_search_messages_by_keyword_ok(search_service, mock_message_dao, mock_collaboration_dao):
+    collabs = [
+        SimpleNamespace(id_conversation=10, role="admin"),
+        SimpleNamespace(id_conversation=11, role="banni"),
+        SimpleNamespace(id_conversation=12, role="viewer"),
+    ]
+    mock_collaboration_dao.find_by_user.return_value = collabs
 
-            service.search_messages_by_date(self.USER_ID, self.TARGET_DATE)
-            
-            mock_message.search_by_date.assert_called_once_with(
-                self.TARGET_DATE, 
-                self.CONV_IDS_AUTORISES
-            )
+    msgs = [SimpleNamespace(id_message=1), SimpleNamespace(id_message=2)]
+    mock_message_dao.search_by_keyword.return_value = msgs
 
-    def test_search_conversations_by_keyword_delegation(self):
-        with patch(PATH_CONVERSATION_DAO, new_callable=MagicMock) as MockConvDAO:
-            service = SearchService(MagicMock(), MockConvDAO.return_value, MagicMock())
-            MockConvDAO.return_value.search_conversations_by_title.return_value = self.CONVERSATION_LIST_MOCK
-            result = service.search_conversations_by_keyword(self.USER_ID, self.KEYWORD)
-            MockConvDAO.return_value.search_conversations_by_title.assert_called_once_with(
-                self.USER_ID, 
-                self.KEYWORD
-            )
-            assert result == self.CONVERSATION_LIST_MOCK
+    res = search_service.search_messages_by_keyword(user_id=5, keyword="hello")
 
-    def test_search_conversations_by_date_delegation(self):
-        with patch(PATH_CONVERSATION_DAO, new_callable=MagicMock) as MockConvDAO:
-            service = SearchService(MagicMock(), MockConvDAO.return_value, MagicMock())
-            MockConvDAO.return_value.get_conversations_by_date.return_value = self.CONVERSATION_LIST_MOCK
-            result = service.search_conversations_by_date(self.USER_ID, self.TARGET_DATE)
-            MockConvDAO.return_value.get_conversations_by_date.assert_called_once_with(
-                self.USER_ID, 
-                self.TARGET_DATE
-            )
-            assert result == self.CONVERSATION_LIST_MOCK
+    mock_message_dao.search_by_keyword.assert_called_once_with(
+        "hello", [10, 12]
+    )
+    assert res == msgs
+
+
+# -------------------------------------------------------------------
+# search_messages_by_date
+# -------------------------------------------------------------------
+
+def test_search_messages_by_date_no_accessible(search_service, mock_message_dao, mock_collaboration_dao):
+    mock_collaboration_dao.find_by_user.return_value = []
+    d = datetime(2024, 1, 1)
+    res = search_service.search_messages_by_date(user_id=1, target_date=d)
+    assert res == []
+    mock_message_dao.search_by_date.assert_not_called()
+
+
+def test_search_messages_by_date_ok(search_service, mock_message_dao, mock_collaboration_dao):
+    collabs = [
+        SimpleNamespace(id_conversation=2, role="viewer"),
+        SimpleNamespace(id_conversation=3, role="banni"),
+    ]
+    mock_collaboration_dao.find_by_user.return_value = collabs
+    d = datetime(2024, 1, 1)
+
+    msgs = [SimpleNamespace(id_message=7)]
+    mock_message_dao.search_by_date.return_value = msgs
+
+    res = search_service.search_messages_by_date(user_id=1, target_date=d)
+
+    mock_message_dao.search_by_date.assert_called_once_with(d, [2])
+    assert res == msgs
+
+
+# -------------------------------------------------------------------
+# search_conversations_by_keyword
+# -------------------------------------------------------------------
+
+@pytest.mark.parametrize("kw", ["", "   "])
+def test_search_conversations_by_keyword_invalid_keyword(
+    search_service, kw, mock_conversation_dao, mock_message_dao, mock_collaboration_dao
+):
+    res = search_service.search_conversations_by_keyword(user_id=1, keyword=kw)
+    assert res == []
+    mock_conversation_dao.search_conversations_by_title.assert_not_called()
+    mock_message_dao.search_by_keyword.assert_not_called()
+    mock_collaboration_dao.find_by_user.assert_not_called()
+
+
+def test_search_conversations_by_keyword_title_only(
+    search_service, mock_conversation_dao, mock_collaboration_dao, mock_message_dao
+):
+    # Deux convs, dont une dupliquée
+    c1 = SimpleNamespace(id_conversation=10, titre="A")
+    c2 = SimpleNamespace(id_conversation=11, titre="B")
+    c_dup = SimpleNamespace(id_conversation=10, titre="A bis")
+
+    mock_conversation_dao.search_conversations_by_title.return_value = [c1, c2, c_dup]
+
+    # Pas d'accès -> _get_user_accessible_conversation_ids renvoie []
+    mock_collaboration_dao.find_by_user.return_value = []
+
+    res = search_service.search_conversations_by_keyword(user_id=3, keyword="test")
+
+    # On garde l'ordre sans doublon
+    assert res == [c1, c2]
+    mock_message_dao.search_by_keyword.assert_not_called()
+
+
+def test_search_conversations_by_keyword_with_messages_and_get_by_id(
+    search_service, mock_conversation_dao, mock_collaboration_dao, mock_message_dao
+):
+    # 1) Résultats de titre
+    c1 = SimpleNamespace(id_conversation=10, titre="Conv titre")
+    mock_conversation_dao.search_conversations_by_title.return_value = [c1]
+
+    # 2) conversations accessibles via collab
+    collabs = [
+        SimpleNamespace(id_conversation=10, role="admin"),
+        SimpleNamespace(id_conversation=20, role="viewer"),
+    ]
+    mock_collaboration_dao.find_by_user.return_value = collabs
+
+    # 3) messages contenant le mot-clé
+    m1 = SimpleNamespace(id_conversation=10)  # déjà dans seen_ids -> ignoré
+    m2 = SimpleNamespace(id_conversation=20)  # nouvelle conversation
+    mock_message_dao.search_by_keyword.return_value = [m1, m2]
+
+    c2 = SimpleNamespace(id_conversation=20, titre="Conv via messages")
+    mock_conversation_dao.get_by_id.return_value = c2
+
+    res = search_service.search_conversations_by_keyword(user_id=7, keyword="python")
+
+    mock_message_dao.search_by_keyword.assert_called_once_with(
+        "python", [10, 20]
+    )
+    mock_conversation_dao.get_by_id.assert_called_once_with(20)
+    assert res == [c1, c2]
+
+
+def test_search_conversations_by_keyword_conv_getter_missing(
+    search_service, mock_conversation_dao, mock_collaboration_dao, mock_message_dao, monkeypatch
+):
+    # 1) Résultats de titre
+    c1 = SimpleNamespace(id_conversation=10, titre="T")
+    mock_conversation_dao.search_conversations_by_title.return_value = [c1]
+
+    # 2) collaborations accessibles
+    collabs = [
+        SimpleNamespace(id_conversation=10, role="admin"),
+        SimpleNamespace(id_conversation=20, role="viewer"),
+    ]
+    mock_collaboration_dao.find_by_user.return_value = collabs
+
+    # 3) messages
+    m2 = SimpleNamespace(id_conversation=20)
+    mock_message_dao.search_by_keyword.return_value = [m2]
+
+    # supprimer get_by_id et read -> conv_getter non callable
+    monkeypatch.delattr(mock_conversation_dao, "get_by_id", raising=False)
+    monkeypatch.delattr(mock_conversation_dao, "read", raising=False)
+
+    res = search_service.search_conversations_by_keyword(user_id=1, keyword="k")
+
+    # On ne rajoute pas la conv obtenue via messages
+    assert res == [c1]
+
+
+def test_search_conversations_by_keyword_conv_getter_exception(
+    search_service, mock_conversation_dao, mock_collaboration_dao, mock_message_dao
+):
+    c1 = SimpleNamespace(id_conversation=1, titre="T")
+    mock_conversation_dao.search_conversations_by_title.return_value = [c1]
+
+    collabs = [SimpleNamespace(id_conversation=2, role="viewer")]
+    mock_collaboration_dao.find_by_user.return_value = collabs
+
+    m = SimpleNamespace(id_conversation=2)
+    mock_message_dao.search_by_keyword.return_value = [m]
+
+    def boom(_id):
+        raise RuntimeError("DB error")
+
+    mock_conversation_dao.get_by_id.side_effect = boom
+
+    res = search_service.search_conversations_by_keyword(user_id=1, keyword="x")
+
+    # On garde seulement c1, car get_by_id a levé une exception
+    assert res == [c1]
+
+
+def test_search_conversations_by_keyword_conv_getter_returns_none(
+    search_service, mock_conversation_dao, mock_collaboration_dao, mock_message_dao
+):
+    c1 = SimpleNamespace(id_conversation=1, titre="T")
+    mock_conversation_dao.search_conversations_by_title.return_value = [c1]
+
+    collabs = [SimpleNamespace(id_conversation=2, role="viewer")]
+    mock_collaboration_dao.find_by_user.return_value = collabs
+
+    m = SimpleNamespace(id_conversation=2)
+    mock_message_dao.search_by_keyword.return_value = [m]
+
+    mock_conversation_dao.get_by_id.return_value = None
+
+    res = search_service.search_conversations_by_keyword(user_id=1, keyword="x")
+
+    # La conversation 2 n'est pas ajoutée car conv_getter retourne None
+    assert res == [c1]
+
+
+# -------------------------------------------------------------------
+# search_conversations_by_date
+# -------------------------------------------------------------------
+
+def test_search_conversations_by_date_ok(search_service, mock_conversation_dao):
+    d = datetime(2024, 2, 1)
+    convs = [SimpleNamespace(id_conversation=1), SimpleNamespace(id_conversation=2)]
+    mock_conversation_dao.get_conversations_by_date.return_value = convs
+
+    res = search_service.search_conversations_by_date(user_id=10, target_date=d)
+
+    mock_conversation_dao.get_conversations_by_date.assert_called_once_with(10, d)
+    assert res == convs

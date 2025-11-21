@@ -1,362 +1,306 @@
-import os
-import sys
-from pathlib import Path
-from types import SimpleNamespace
-from datetime import datetime
-
-import importlib
 import pytest
-import psycopg2.pool
-
-
-# --------------------------------------------------------------------
-# Chemins & environnement : pointer vers le dossier 'src' du projet
-# --------------------------------------------------------------------
-# Ce fichier est supposé être dans: <repo>/src/tests/test_service/...
-# parents[3] => <repo>/src
-SRC_DIR = Path(__file__).resolve().parents[3]
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-# Évite toute connexion réelle à une DB
-os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/db")
-
-
-# --------------------------------------------------------------------
-# Stub de pool psycopg2 -> aucune vraie connexion n'est faite
-# --------------------------------------------------------------------
-class _DummyCursor:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def execute(self, *args, **kwargs):
-        return None
-
-    def fetchone(self):
-        return None
-
-    def fetchall(self):
-        return []
-
-
-class _DummyConnection:
-    def __init__(self):
-        self.autocommit = False
-
-    def cursor(self):
-        return _DummyCursor()
-
-    def commit(self):
-        return None
-
-    def rollback(self):
-        return None
-
-
-class _DummyPool:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def closeall(self):
-        return None
-
-    def getconn(self):
-        return _DummyConnection()
-
-    def putconn(self, conn):
-        return None
-
-
-psycopg2.pool.SimpleConnectionPool = _DummyPool  # type: ignore
-
-
-# --------------------------------------------------------------------
-# Imports après configuration du chemin
-# --------------------------------------------------------------------
-from ObjetMetier.Collaboration import Collaboration
+from unittest.mock import MagicMock
 from Service.CollaborationService import CollaborationService
-from Utils.Singleton import Singleton
+from ObjetMetier.Collaboration import Collaboration
 
+# ----------------------------------------------------------
+# FIXTURE SERVICE AVEC DAO MOCKÉS
+# ----------------------------------------------------------
 
-# --------------------------------------------------------------------
-# Stubs DAO
-# --------------------------------------------------------------------
-class StubCollaborationDAO:
-    def __init__(self):
-        self.next_id = 1
-        self.by_pair = {}
-        self.by_id = {}
-        self.created = []
-        self.deleted = []
-
-    def create(self, collaboration: Collaboration) -> bool:
-        if getattr(collaboration, "id_collaboration", None) in (None, 0):
-            collaboration.id_collaboration = self.next_id
-            self.next_id += 1
-        self.by_pair[(collaboration.id_conversation, collaboration.id_user)] = collaboration
-        self.by_id[collaboration.id_collaboration] = collaboration
-        self.created.append(collaboration)
-        return True
-
-    # pour compat : certains services peuvent appeler add_collaboration
-    def add_collaboration(self, collaboration: Collaboration) -> bool:
-        return self.create(collaboration)
-
-    def find_by_conversation_and_user(self, conversation_id: int, user_id: int):
-        return self.by_pair.get((conversation_id, user_id))
-
-    def find_by_conversation(self, conversation_id: int):
-        return [c for c in self.by_pair.values() if c.id_conversation == conversation_id]
-
-    def delete_by_conversation_and_user(self, conversation_id: int, user_id: int) -> bool:
-        collab = self.by_pair.pop((conversation_id, user_id), None)
-        if not collab:
-            return False
-        self.by_id.pop(collab.id_collaboration, None)
-        self.deleted.append((conversation_id, user_id))
-        return True
-
-    def update_role(self, id_collaboration: int, new_role: str) -> bool:
-        collab = self.by_id.get(id_collaboration)
-        if not collab:
-            return False
-        collab.role = new_role
-        return True
-
-
-class StubUserDAO:
-    def __init__(self, existing=None):
-        self.existing = set(existing or [])
-        self.calls = []
-
-    def set_existing(self, new_ids):
-        self.existing = set(new_ids)
-
-    def read(self, user_id: int):
-        self.calls.append(user_id)
-        return object() if user_id in self.existing else None
-
-    # au cas où le service attendrait un user courant
-    def get_current_user_id(self) -> int:
-        # valeur fictive mais stable
-        return 1
-
-
-class StubConversationDAO:
-    def __init__(self, conversations=None):
-        self.conversations = conversations or {}
-        self.calls = []
-
-    def set_conversations(self, conversations):
-        self.conversations = conversations
-
-    def read(self, conversation_id: int):
-        self.calls.append(conversation_id)
-        return self.conversations.get(conversation_id)
-
-
-# --------------------------------------------------------------------
-# Fixture service avec monkeypatch des DAO dans le module cible
-# --------------------------------------------------------------------
 @pytest.fixture
-def service_setup(monkeypatch):
-    collab_dao = StubCollaborationDAO()
-    user_dao = StubUserDAO({1, 2, 3})
-    conversation_dao = StubConversationDAO(
-        {10: SimpleNamespace(token_viewer="viewer", token_writter="writer")}
+def service():
+    s = CollaborationService()
+
+    # mock DAO
+    s.user_dao = MagicMock()
+    s.conversation_dao = MagicMock()
+    s.collab_dao = MagicMock()
+
+    return s
+
+
+# ----------------------------------------------------------
+# TEST _normalize_role
+# ----------------------------------------------------------
+
+def test_normalize_role_valid(service):
+    assert service._normalize_role("Admin") == "admin"
+    assert service._normalize_role(" viewer ") == "viewer"
+
+def test_normalize_role_invalid(service):
+    with pytest.raises(ValueError):
+        service._normalize_role("root")
+
+
+# ----------------------------------------------------------
+# TEST _require_collaboration
+# ----------------------------------------------------------
+
+def test_require_collaboration_ok(service):
+    fake = Collaboration(id_user=1, id_conversation=2, role="admin")
+    service.collab_dao.find_by_conversation_and_user.return_value = fake
+    assert service._require_collaboration(2, 1) is fake
+
+def test_require_collaboration_denied(service):
+    service.collab_dao.find_by_conversation_and_user.return_value = None
+    with pytest.raises(PermissionError):
+        service._require_collaboration(10, 12)
+
+
+# ----------------------------------------------------------
+# TEST _require_admin
+# ----------------------------------------------------------
+
+def test_require_admin_ok(service):
+    fake = Collaboration(id_user=1, id_conversation=2, role="admin")
+    service.collab_dao.find_by_conversation_and_user.return_value = fake
+    assert service._require_admin(2, 1) is fake
+
+def test_require_admin_not_admin(service):
+    fake = Collaboration(id_user=1, id_conversation=2, role="viewer")
+    service.collab_dao.find_by_conversation_and_user.return_value = fake
+    with pytest.raises(PermissionError):
+        service._require_admin(2, 1)
+
+
+# ----------------------------------------------------------
+# TEST is_admin, is_writer, is_viewer, is_banni
+# ----------------------------------------------------------
+
+def test_roles_checks(service):
+    c = Collaboration(id_user=1, id_conversation=2, role="writer")
+    service.collab_dao.find_by_conversation_and_user.return_value = c
+
+    assert service.is_writer(1, 2) is True
+    assert service.is_admin(1, 2) is False
+    assert service.is_viewer(1, 2) is False
+    assert service.is_banni(1, 2) is False
+
+    c2 = Collaboration(id_user=1, id_conversation=2, role="banni")
+    service.collab_dao.find_by_conversation_and_user.return_value = c2
+    assert service.is_banni(1, 2) is True
+
+
+# ----------------------------------------------------------
+# TEST create_collab
+# ----------------------------------------------------------
+
+def test_create_collab_success(service):
+    service.user_dao.read.return_value = object()
+    service.conversation_dao.read.return_value = object()
+    service.collab_dao.find_by_conversation_and_user.return_value = None
+    service.collab_dao.create.return_value = True
+
+    ok = service.create_collab(1, 2, "writer")
+    assert ok is True
+
+
+def test_create_collab_existing(service):
+    service.user_dao.read.return_value = object()
+    service.conversation_dao.read.return_value = object()
+    service.collab_dao.find_by_conversation_and_user.return_value = Collaboration(
+        id_user=1, id_conversation=2, role="viewer"
     )
 
-    # Monkeypatcher les classes importées dans le module de service
-    monkeypatch.setattr("Service.CollaborationService.CollaborationDAO", lambda: collab_dao)
-    monkeypatch.setattr("Service.CollaborationService.UserDAO", lambda: user_dao)
-    monkeypatch.setattr("Service.CollaborationService.ConversationDAO", lambda: conversation_dao)
+    ok = service.create_collab(1, 2, "writer")
+    assert ok is False  # because an exception happens inside
 
-    # Reset le singleton si le service l'utilise
-    Singleton._instances.pop(CollaborationService, None)
+def test_create_collab_invalid_role(service):
+    service.user_dao.read.return_value = object()
+    service.conversation_dao.read.return_value = object()
+    service.collab_dao.find_by_conversation_and_user.return_value = None
 
-    service = CollaborationService()
-
-    # Sécurité : exposer toutes les variantes potentielles de noms utilisés par le service
-    service.collab_dao = collab_dao
-    service.collaboration_dao = collab_dao           # parfois le code utilise ce nom
-    service.collaboration_service = collab_dao       # si un appel se trompe d'attribut (ex: add_collaboration)
-    service.user_dao = user_dao
-    service.user_service = user_dao                  # si le service appelle get_current_user_id()
-    service.conversation_dao = conversation_dao
-
-    return service, collab_dao, user_dao, conversation_dao
+    ok = service.create_collab(1, 2, "root")
+    assert ok is False
 
 
-# --------------------------------------------------------------------
-# Tests
-# --------------------------------------------------------------------
-def test_role_checks(service_setup):
-    service, collab_dao, _, _ = service_setup
-    collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
-    collab_dao.create(Collaboration(id_conversation=10, id_user=2, role="writer"))
-    collab_dao.create(Collaboration(id_conversation=10, id_user=3, role="viewer"))
+# ----------------------------------------------------------
+# TEST list_collaborators + list_collaborators_for_user
+# ----------------------------------------------------------
 
-    assert service.is_admin(1, 10) is True
-    assert service.is_admin(4, 10) is False
-    assert service.is_writer(2, 10) is True
-    assert service.is_writer(1, 10) is False
-    assert service.is_viewer(3, 10) is True
-    assert service.is_viewer(5, 10) is False
+def test_list_collaborators(service):
+    fake_list = [
+        Collaboration(id_user=1, id_conversation=2, role="admin"),
+        Collaboration(id_user=3, id_conversation=2, role="viewer")
+    ]
+    service.collab_dao.find_by_conversation.return_value = fake_list
+    assert service.list_collaborators(2) == fake_list
 
 
-def test_create_collab_success(service_setup):
-    service, collab_dao, _, _ = service_setup
+def test_list_collaborators_for_user_ok(service):
+    service.collab_dao.find_by_conversation_and_user.return_value = Collaboration(
+        id_user=99, id_conversation=2, role="viewer"
+    )
+    fake_list = [Collaboration(id_user=1, id_conversation=2, role="admin")]
+    service.collab_dao.find_by_conversation.return_value = fake_list
 
-    created = service.create_collab(user_id=1, conversation_id=10, role="admin")
-
-    assert created is True
-    assert collab_dao.created
-    stored = collab_dao.find_by_conversation_and_user(10, 1)
-    assert stored is not None and stored.role == "admin"
-
-
-def test_create_collab_missing_user(service_setup):
-    service, _, user_dao, _ = service_setup
-    user_dao.set_existing(set())
-
-    assert service.create_collab(user_id=9, conversation_id=10, role="admin") is False
+    assert service.list_collaborators_for_user(2, 99) == fake_list
 
 
-def test_create_collab_missing_conversation(service_setup):
-    service, _, _, conversation_dao = service_setup
-    conversation_dao.set_conversations({})
-
-    assert service.create_collab(user_id=1, conversation_id=99, role="admin") is False
-
-
-def test_create_collab_invalid_role(service_setup):
-    service, _, _, _ = service_setup
-
-    assert service.create_collab(user_id=1, conversation_id=10, role="invalid") is False
+def test_list_collaborators_for_user_denied(service):
+    service.collab_dao.find_by_conversation_and_user.return_value = None
+    with pytest.raises(PermissionError):
+        service.list_collaborators_for_user(2, 99)
 
 
-def test_create_collab_duplicate(service_setup):
-    service, collab_dao, _, _ = service_setup
-    service.create_collab(user_id=1, conversation_id=10, role="admin")
+# ----------------------------------------------------------
+# TEST delete_collaborator
+# ----------------------------------------------------------
 
-    assert service.create_collab(user_id=1, conversation_id=10, role="admin") is False
-    assert len(collab_dao.created) == 1
+def test_delete_collaborator_ok(service):
+    # requester admin
+    service.collab_dao.find_by_conversation_and_user.side_effect = [
+        Collaboration(id_user=10, id_conversation=1, role="admin"),   # require_admin
+        Collaboration(id_user=5, id_conversation=1, role="viewer"),   # target found
+    ]
+    service.collab_dao.delete_by_conversation_and_user.return_value = True
 
-
-def test_add_collaboration(service_setup):
-    service, collab_dao, _, _ = service_setup
-    collab = Collaboration(id_conversation=10, id_user=5, role="viewer")
-
-    result = service.add_collaboration(collab)
-
-    assert result is True
-    assert collab_dao.find_by_conversation_and_user(10, 5) is not None
+    ok = service.delete_collaborator(1, 5, 10)
+    assert ok is True
 
 
-def test_list_collaborators(service_setup):
-    service, collab_dao, _, _ = service_setup
-    collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
-    collab_dao.create(Collaboration(id_conversation=10, id_user=2, role="writer"))
+def test_delete_collaborator_target_not_found(service):
+    service.collab_dao.find_by_conversation_and_user.return_value = Collaboration(
+        id_user=10, id_conversation=1, role="admin"
+    )
+    service.collab_dao.find_by_conversation_and_user.side_effect = [
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+        None
+    ]
 
-    collaborators = service.list_collaborators(10)
-
-    assert len(collaborators) == 2
-    assert {c.id_user for c in collaborators} == {1, 2}
-
-
-def test_delete_collaborator(service_setup):
-    service, collab_dao, _, _ = service_setup
-    collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
-    collab_dao.create(Collaboration(id_conversation=10, id_user=2, role="viewer"))
-
-    assert service.delete_collaborator(10, 2, requester_id=1) is True
-    assert service.delete_collaborator(10, 2, requester_id=1) is False
-
-
-def test_change_role_missing_collaboration(service_setup):
-    service, _, _, _ = service_setup
-    service.collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
     with pytest.raises(ValueError):
-        service.change_role(10, 5, "writer", requester_id=1)
+        service.delete_collaborator(1, 99, 10)
 
 
-def test_change_role_success(service_setup):
-    service, collab_dao, _, _ = service_setup
-    collab_dao.create(Collaboration(id_conversation=10, id_user=1, role="admin"))
-    collab = Collaboration(id_conversation=10, id_user=6, role="viewer")
-    collab_dao.create(collab)
+def test_delete_collaborator_self_single_user(service):
+    # admin deleting himself while he is the only collab
+    service.collab_dao.find_by_conversation.return_value = [
+        Collaboration(id_user=10, id_conversation=1, role="admin")
+    ]
 
-    assert service.change_role(10, 6, "writer", requester_id=1) is True
-    updated = collab_dao.find_by_conversation_and_user(10, 6)
-    assert updated.role == "writer"
+    service.collab_dao.find_by_conversation_and_user.side_effect = [
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+    ]
 
-
-def test_verify_token_collaboration_missing_conversation(service_setup):
-    service, _, _, conversation_dao = service_setup
-    conversation_dao.set_conversations({})
-
-    assert service.verify_token_collaboration(99, "viewer") is False
+    with pytest.raises(ValueError):
+        service.delete_collaborator(1, 10, 10)
 
 
-def test_verify_token_collaboration_match(service_setup):
-    service, _, _, _ = service_setup
+# ----------------------------------------------------------
+# TEST change_role
+# ----------------------------------------------------------
 
-    assert service.verify_token_collaboration(10, "viewer") is True
-    assert service.verify_token_collaboration(10, "writer") is True
-    assert service.verify_token_collaboration(10, "other") is False
+def test_change_role_ok(service):
+    service.collab_dao.find_by_conversation_and_user.side_effect = [
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+        Collaboration(id_user=5, id_conversation=1, role="viewer"),
+    ]
+    service.collab_dao.update_role.return_value = True
 
-
-
-# --- Tests pour add_collab_by_token -----------------------------------------
-
-def test_add_collab_by_token_missing_conversation(service_setup):
-    service, collab_dao, _, conversation_dao = service_setup
-    # plus aucune conversation connue
-    conversation_dao.set_conversations({})
-
-    ok = service.add_collab_by_token(conversation_id=99, token="viewer", user_id=1)
-    assert ok is False
-    # rien n'a été créé
-    assert collab_dao.find_by_conversation_and_user(99, 1) is None
-
-
-def test_add_collab_by_token_viewer(service_setup):
-    service, collab_dao, _, _ = service_setup
-    # conversation 10 existe avec token_viewer="viewer" (défini dans la fixture)
-    ok = service.add_collab_by_token(conversation_id=10, token="viewer", user_id=1)
+    ok = service.change_role(1, 5, "writer", 10)
     assert ok is True
 
-    created = collab_dao.find_by_conversation_and_user(10, 1)
-    assert created is not None
-    assert created.role.lower() == "viewer"
+
+def test_change_role_not_found(service):
+    service.collab_dao.find_by_conversation_and_user.side_effect = [
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+        None
+    ]
+    with pytest.raises(ValueError):
+        service.change_role(1, 5, "writer", 10)
 
 
-def test_add_collab_by_token_writer(service_setup):
-    service, collab_dao, _, _ = service_setup
-    # conversation 10 existe avec token_writter="writer"
-    ok = service.add_collab_by_token(conversation_id=10, token="writer", user_id=2)
-    assert ok is True
-
-    created = collab_dao.find_by_conversation_and_user(10, 2)
-    assert created is not None
-    assert created.role.lower() == "writer"
+def test_change_role_invalid_role(service):
+    service.collab_dao.find_by_conversation_and_user.return_value = Collaboration(
+        id_user=10, id_conversation=1, role="admin"
+    )
+    with pytest.raises(ValueError):
+        service.change_role(1, 10, "root", 10)
 
 
-def test_add_collab_by_token_invalid_token(service_setup):
-    service, collab_dao, _, _ = service_setup
-    ok = service.add_collab_by_token(conversation_id=10, token="badtoken", user_id=3)
-    assert ok is False
-    assert collab_dao.find_by_conversation_and_user(10, 3) is None
+def test_change_role_self_single_user(service):
+    service.collab_dao.find_by_conversation.return_value = [
+        Collaboration(id_user=10, id_conversation=1, role="admin")
+    ]
+    service.collab_dao.find_by_conversation_and_user.side_effect = [
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+        Collaboration(id_user=10, id_conversation=1, role="admin"),
+    ]
+
+    with pytest.raises(ValueError):
+        service.change_role(1, 10, "viewer", 10)
 
 
-def test_add_collab_by_token_user_not_found(service_setup):
-    service, collab_dao, user_dao, _ = service_setup
-    # fait en sorte que le user n'existe pas → create_collab renverra False
-    user_dao.set_existing(set())
+# ----------------------------------------------------------
+# TEST verify_token_collaboration
+# ----------------------------------------------------------
 
-    ok = service.add_collab_by_token(conversation_id=10, token="viewer", user_id=999)
-    assert ok is False
-    assert collab_dao.find_by_conversation_and_user(10, 999) is None
+def test_verify_token_collaboration_ok(service):
+    conv = MagicMock()
+    conv.token_viewer = "tv"
+    conv.token_writter = "tw"
+
+    service.conversation_dao.read.return_value = conv
+
+    assert service.verify_token_collaboration(1, "tv") is True
+    assert service.verify_token_collaboration(1, "tw") is True
+    assert service.verify_token_collaboration(1, "xxx") is False
+
+def test_verify_token_collaboration_no_conv(service):
+    service.conversation_dao.read.return_value = None
+    assert service.verify_token_collaboration(1, "tv") is False
+
+
+# ----------------------------------------------------------
+# TEST add_collab_by_token
+# ----------------------------------------------------------
+
+def test_add_collab_by_token_viewer(service):
+    conv = MagicMock()
+    conv.token_viewer = "tv"
+    conv.token_writter = "tw"
+    service.conversation_dao.read.return_value = conv
+
+    service.collab_dao.find_by_conversation_and_user.return_value = None
+    service.create_collab = MagicMock(return_value=True)
+
+    assert service.add_collab_by_token(1, "tv", 5) is True
+
+
+def test_add_collab_by_token_writer(service):
+    conv = MagicMock()
+    conv.token_viewer = "tv"
+    conv.token_writter = "tw"
+    service.conversation_dao.read.return_value = conv
+
+    service.collab_dao.find_by_conversation_and_user.return_value = None
+    service.create_collab = MagicMock(return_value=True)
+
+    assert service.add_collab_by_token(1, "tw", 5) is True
+
+
+def test_add_collab_by_token_invalid_token(service):
+    conv = MagicMock()
+    conv.token_viewer = "tv"
+    conv.token_writter = "tw"
+    service.conversation_dao.read.return_value = conv
+
+    service.collab_dao.find_by_conversation_and_user.return_value = None
+
+    assert service.add_collab_by_token(1, "xxx", 5) is False
+
+
+def test_add_collab_by_token_existing(service):
+    conv = MagicMock()
+    service.conversation_dao.read.return_value = conv
+
+    existing = Collaboration(id_user=5, id_conversation=1, role="viewer")
+    service.collab_dao.find_by_conversation_and_user.return_value = existing
+
+    assert service.add_collab_by_token(1, "tv", 5) is False
+
+
+def test_add_collab_by_token_no_conv(service):
+    service.conversation_dao.read.return_value = None
+    assert service.add_collab_by_token(1, "tv", 5) is False

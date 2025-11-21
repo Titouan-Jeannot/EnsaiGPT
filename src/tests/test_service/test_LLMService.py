@@ -1,272 +1,387 @@
-# src/tests/test_service/test_LLMService_HTTP.py
-import json
-import datetime
 import pytest
 from unittest.mock import MagicMock
+from types import SimpleNamespace
+from datetime import datetime, timezone
 
-try:
-    from ObjetMetier.Message import Message
-except Exception:
-    from ObjetMetier.Message import Message  # type: ignore
+import requests
 
-try:
-    from Service.LLMService import LLMService
-except Exception:
-    from Service.LLMService import LLMService  # type: ignore
+from Service.LLMService import LLMService, AGENT_USER_ID
+from ObjetMetier.Message import Message
+from ObjetMetier.Conversation import Conversation
+from ObjetMetier.User import User
 
 
-# ---------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------
-def make_msg(
-    id_conversation=1,
-    id_user=123,
-    text="hello",
-    is_from_agent=False,
-    dt=None,
-):
-    if dt is None:
-        dt = datetime.datetime(2025, 1, 1, 12, 0, 0)
-    return Message(
-        id_message=None,
-        id_conversation=id_conversation,
-        id_user=id_user,
-        datetime=dt,
-        message=text,
-        is_from_agent=is_from_agent,
+# -------------------------------------------------------------------
+# Fixtures DAO + service
+# -------------------------------------------------------------------
+
+@pytest.fixture
+def mock_message_dao():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_conversation_dao():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_user_dao():
+    return MagicMock()
+
+
+@pytest.fixture
+def llm_service(mock_message_dao, mock_conversation_dao, mock_user_dao):
+    svc = LLMService(
+        message_dao=mock_message_dao,
+        conversation_dao=mock_conversation_dao,
+        user_dao=mock_user_dao,
+        base_url="https://fake-ensai-gpt.test",  # évite les vrais appels
+        default_system_prompt="SYSTEM_DEFAULT",
+        default_temperature=0.5,
+        default_max_tokens=256,
+        timeout=5.0,
     )
+    # On fixe les overrides pour être sûrs des valeurs
+    svc.temperature_override = 0.9
+    svc.top_p_override = 0.8
+    svc.max_tokens_override = 128
+    return svc
 
 
-class FakeResponseOK:
-    def __init__(self, payload):
-        self._payload = payload
+# -------------------------------------------------------------------
+# Helpers pour mocker requests.post
+# -------------------------------------------------------------------
+
+class DummyRespOK:
+    def __init__(self, data):
+        self._data = data
         self.status_code = 200
+        self.text = "OK"
 
     def raise_for_status(self):
-        # 200 -> no error
         return None
 
     def json(self):
-        return self._payload
+        return self._data
 
 
-class FakeResponseError:
-    def __init__(self, status_code=500, text="boom"):
-        self.status_code = status_code
-        self.text = text
+class DummyRespHTTPError:
+    def __init__(self):
+        self.status_code = 500
+        self.text = "Erreur interne"
 
     def raise_for_status(self):
-        # Simule requests.HTTPError
-        import requests
-
-        raise requests.HTTPError(f"{self.status_code} {self.text}")
+        raise requests.exceptions.HTTPError("500 error")
 
     def json(self):
-        return {"error": self.text}
+        return {}
 
 
-# ---------------------------------------------------------------------
-# Tests simple_complete
-# ---------------------------------------------------------------------
-def test_simple_complete_happy_path():
-    # Mock session.post -> OK
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK(
-        {"content": "Bonjour!", "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}}
+# -------------------------------------------------------------------
+# Tests _validate_id
+# -------------------------------------------------------------------
+
+def test_validate_id_ok(llm_service):
+    llm_service._validate_id("conversation_id", 1)
+    llm_service._validate_id("user_id", 42)
+
+
+@pytest.mark.parametrize("bad", [0, -1, "a", 1.5])
+def test_validate_id_invalid(llm_service, bad):
+    with pytest.raises(ValueError, match="invalide"):
+        llm_service._validate_id("conversation_id", bad)
+
+
+# -------------------------------------------------------------------
+# Tests _call_llm
+# -------------------------------------------------------------------
+
+def test_call_llm_success(llm_service, monkeypatch):
+    def fake_post(url, json=None, headers=None, timeout=None):
+        assert url.endswith("/generate")
+        # on vérifie que les paramètres sont passés
+        assert "history" in json
+        assert "max_tokens" in json
+        assert "temperature" in json
+        assert "top_p" in json
+        data = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Réponse LLM",
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 20,
+                "total_tokens": 30,
+            },
+        }
+        return DummyRespOK(data)
+
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
+
+    history = [{"role": "system", "content": "SYS"}]
+    out = llm_service._call_llm(
+        history,
+        temperature=0.3,
+        max_tokens=50,
+        top_p=0.9,
     )
 
-    dao = MagicMock()  # pas utilisé par simple_complete
-    svc = LLMService(
-        dao,
-        requests_session=session,
-        base_url="https://ensai-gpt-109912438483.europe-west4.run.app",
-        default_system_prompt="You are helpful.",
+    assert out["content"] == "Réponse LLM"
+    assert out["usage"]["prompt_tokens"] == 10
+    assert out["usage"]["completion_tokens"] == 20
+    assert out["usage"]["total_tokens"] == 30
+
+
+def test_call_llm_http_error(llm_service, monkeypatch):
+    def fake_post(url, json=None, headers=None, timeout=None):
+        return DummyRespHTTPError()
+
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
+
+    with pytest.raises(RuntimeError, match="HTTP"):
+        llm_service._call_llm([{"role": "system", "content": "SYS"}])
+
+
+def test_call_llm_timeout(llm_service, monkeypatch):
+    def fake_post(url, json=None, headers=None, timeout=None):
+        raise requests.exceptions.Timeout("timeout!")
+
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
+
+    with pytest.raises(RuntimeError, match="Timeout"):
+        llm_service._call_llm([{"role": "system", "content": "SYS"}])
+
+
+def test_call_llm_bad_json(llm_service, monkeypatch):
+    class DummyNoJSON:
+        def __init__(self):
+            self.status_code = 200
+            self.text = "not json"
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            raise ValueError("no json")
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        return DummyNoJSON()
+
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
+
+    with pytest.raises(RuntimeError, match="non-JSON"):
+        llm_service._call_llm([{"role": "system", "content": "SYS"}])
+
+
+def test_call_llm_bad_structure(llm_service, monkeypatch):
+    def fake_post(url, json=None, headers=None, timeout=None):
+        # pas de choices[0].message.content
+        data = {"something": "wrong"}
+        return DummyRespOK(data)
+
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
+
+    with pytest.raises(RuntimeError, match="Format de réponse inattendu"):
+        llm_service._call_llm([{"role": "system", "content": "SYS"}])
+
+
+# -------------------------------------------------------------------
+# Tests _build_history_for_conversation
+# -------------------------------------------------------------------
+
+def _make_msg(id_user, text, is_agent=False, dt=None):
+    dt = dt or datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
+    return Message(
+        id_message=None,
+        id_conversation=10,
+        id_user=id_user,
+        datetime=dt,
+        message=text,
+        is_from_agent=is_agent,
     )
 
-    out = svc.simple_complete("Salut ?")
-    assert out == "Bonjour!"
 
-    # Vérifie le JSON envoyé
-    args, kwargs = session.post.call_args
-    assert args[0].endswith("/chat/generate")
-    body = kwargs["json"]
-    assert body["messages"][0] == {"role": "system", "content": "You are helpful."}
-    assert body["messages"][1] == {"role": "user", "content": "Salut ?"}
-    assert body["temperature"] == svc.default_temperature
-    assert body["max_tokens"] == svc.default_max_tokens
-    # pas de model si None
-    assert "model" not in body
+def test_build_history_with_conv_prompt_priority(llm_service, mock_message_dao, mock_conversation_dao, mock_user_dao):
+    # messages
+    m1 = _make_msg(1, "Hello", is_agent=False)
+    m2 = _make_msg(AGENT_USER_ID, "Hi!", is_agent=True)
+    mock_message_dao.get_messages_by_conversation.return_value = [m1, m2]
 
+    # prompts : conv > user > default
+    mock_conversation_dao.get_prompts_conversation.return_value = "PROMPT_CONV"
+    mock_user_dao.get_prompt_user.return_value = "PROMPT_USER"
 
-def test_simple_complete_with_api_key_header():
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK({"content": "ok"})
+    history = llm_service._build_history_for_conversation(conversation_id=10, user_id=1)
 
-    dao = MagicMock()
-    svc = LLMService(
-        dao,
-        requests_session=session,
-        base_url="https://ensai-gpt-109912438483.europe-west4.run.app",
-        api_key="SECRET123",
-    )
-    _ = svc.simple_complete("Ping")
+    assert history[0]["role"] == "system"
+    assert history[0]["content"] == "PROMPT_CONV"
 
-    _, kwargs = session.post.call_args
-    headers = kwargs["headers"]
-    assert headers.get("Authorization") == "Bearer SECRET123"
-    assert headers.get("Content-Type") == "application/json"
+    # premier message user
+    assert history[1]["role"] == "user"
+    assert "<user id=1>" in history[1]["content"]
+    assert "Hello" in history[1]["content"]
+
+    # deuxième message agent
+    assert history[2]["role"] == "assistant"
+    assert "Hi!" in history[2]["content"]
 
 
-def test_simple_complete_banned_input_raises():
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK({"content": "ne devrait pas être appelé"})
+def test_build_history_with_user_prompt_when_no_conv(llm_service, mock_message_dao, mock_conversation_dao, mock_user_dao):
+    mock_message_dao.get_messages_by_conversation.return_value = []
+    mock_conversation_dao.get_prompts_conversation.return_value = ""
+    mock_user_dao.get_prompt_user.return_value = "PROMPT_USER_ONLY"
 
-    banned = MagicMock()
-    banned.contains_banned.return_value = True  # déclenche l'erreur
-
-    dao = MagicMock()
-    svc = LLMService(dao, requests_session=session, banned_service=banned)
-
-    with pytest.raises(ValueError):
-        svc.simple_complete("Texte interdit")
-
-    # L'appel HTTP ne doit PAS être fait
-    session.post.assert_not_called()
+    history = llm_service._build_history_for_conversation(conversation_id=10, user_id=1)
+    assert history[0]["role"] == "system"
+    assert history[0]["content"] == "PROMPT_USER_ONLY"
 
 
-def test_simple_complete_http_error_propagates():
-    session = MagicMock()
-    session.post.return_value = FakeResponseError(502, "Bad Gateway")
+def test_build_history_with_default_prompt(llm_service, mock_message_dao, mock_conversation_dao, mock_user_dao):
+    mock_message_dao.get_messages_by_conversation.return_value = []
 
-    dao = MagicMock()
-    svc = LLMService(dao, requests_session=session)
+    # conversation_dao ou user_dao qui lèvent des exceptions
+    mock_conversation_dao.get_prompts_conversation.side_effect = Exception("boom conv")
+    mock_user_dao.get_prompt_user.side_effect = Exception("boom user")
 
-    import requests
+    history = llm_service._build_history_for_conversation(conversation_id=10, user_id=1)
+    assert history[0]["role"] == "system"
+    # default_system_prompt passé au constructeur
+    assert history[0]["content"] == "SYSTEM_DEFAULT"
 
-    with pytest.raises(requests.HTTPError):
-        svc.simple_complete("Hello")
+
+def test_build_history_raises_if_message_dao_missing_method(llm_service):
+    # on met un objet sans méthode get_messages_by_conversation
+    llm_service.message_dao = SimpleNamespace()
+    with pytest.raises(RuntimeError, match="ne fournit pas get_messages_by_conversation"):
+        llm_service._build_history_for_conversation(conversation_id=10, user_id=1)
 
 
-# ---------------------------------------------------------------------
+# -------------------------------------------------------------------
 # Tests generate_agent_reply
-# ---------------------------------------------------------------------
-def test_generate_agent_reply_sends_full_history_and_persists():
-    # Historique : user -> agent -> user
-    history = [
-        make_msg(text="Salut", id_user=11, is_from_agent=False, dt=datetime.datetime(2025, 1, 1, 10, 0, 0)),
-        make_msg(text="Bonjour, comment puis-je vous aider ?", id_user=0, is_from_agent=True, dt=datetime.datetime(2025, 1, 1, 10, 0, 1)),
-        make_msg(text="J'ai un souci.", id_user=11, is_from_agent=False, dt=datetime.datetime(2025, 1, 1, 10, 1, 0)),
-    ]
+# -------------------------------------------------------------------
 
-    # DAO
-    dao = MagicMock()
-    dao.get_messages_by_conversation.return_value = history
+def test_generate_agent_reply_success(llm_service, mock_message_dao, monkeypatch):
+    # on mocke _build_history_for_conversation pour éviter de re-tester sa logique
+    def fake_build_history(conv_id, user_id):
+        assert conv_id == 10
+        assert user_id == 2
+        return [{"role": "system", "content": "SYS"}, {"role": "user", "content": "Hi"}]
 
-    # Session -> réponse modèle
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK(
-        {"content": "Voici la solution.", "usage": {"prompt_tokens": 42, "completion_tokens": 10, "total_tokens": 52}}
+    monkeypatch.setattr(llm_service, "_build_history_for_conversation", fake_build_history)
+
+    # on mocke _call_llm
+    def fake_call_llm(history, temperature=None, max_tokens=None, top_p=None):
+        assert history[0]["content"] == "SYS"
+        return {"content": "Réponse agent", "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3}}
+
+    monkeypatch.setattr(llm_service, "_call_llm", fake_call_llm)
+
+    now = datetime.now(timezone.utc)
+    created_msg = Message(
+        id_message=123,
+        id_conversation=10,
+        id_user=AGENT_USER_ID,
+        datetime=now,
+        message="Réponse agent",
+        is_from_agent=True,
     )
+    mock_message_dao.create.return_value = created_msg
 
-    # create() renvoie l'objet persisted (on peut renvoyer ce qu'on veut)
-    def fake_create(msg_obj):
-        # Simule que la DB assigne un id_message
-        msg_obj.id_message = 999
-        return msg_obj
+    res = llm_service.generate_agent_reply(conversation_id=10, user_id=2)
 
-    dao.create.side_effect = fake_create
-
-    svc = LLMService(
-        dao,
-        requests_session=session,
-        default_system_prompt="System prompt ici.",
-    )
-
-    created = svc.generate_agent_reply(conversation_id=1, user_id=11)
-
-    # Vérifie persistance
-    assert created.is_from_agent is True
-    assert created.message == "Voici la solution."
-    assert created.id_message == 999
-    dao.create.assert_called_once()
-
-    # Vérifie le payload envoyé à l'API
-    args, kwargs = session.post.call_args
-    assert args[0].endswith("/chat/generate")
-    body = kwargs["json"]
-    msgs = body["messages"]
-    assert msgs[0] == {"role": "system", "content": "System prompt ici."}
-    # mapping des rôles + préfixe <user id=...>
-    assert msgs[1] == {"role": "user", "content": "<user id=11>\nSalut"}
-    assert msgs[2] == {"role": "assistant", "content": "Bonjour, comment puis-je vous aider ?"}
-    assert msgs[3] == {"role": "user", "content": "<user id=11>\nJ'ai un souci."}
+    # on récupère bien le message créé par le DAO
+    assert res is created_msg
+    mock_message_dao.create.assert_called_once()
+    arg = mock_message_dao.create.call_args[0][0]
+    assert arg.id_conversation == 10
+    assert arg.id_user == AGENT_USER_ID
+    assert arg.is_from_agent is True
+    assert isinstance(arg.message, str)
 
 
-def test_generate_agent_reply_with_extra_context():
-    dao = MagicMock()
-    dao.get_messages_by_conversation.return_value = [make_msg(text="Aide moi", id_user=10)]
-
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK({"content": "OK"})
-
-    svc = LLMService(dao, requests_session=session)
-
-    _ = svc.generate_agent_reply(1, 10, extra_context="Infos supplémentaires")
-
-    _, kwargs = session.post.call_args
-    msgs = kwargs["json"]["messages"]
-    # Le dernier message system doit contenir le contexte
-    assert msgs[-1]["role"] == "system"
-    assert "Infos supplémentaires" in msgs[-1]["content"]
+@pytest.mark.parametrize("cid, uid", [(0, 1), (-1, 1), (1, 0), (1, -2)])
+def test_generate_agent_reply_invalid_ids(llm_service, cid, uid):
+    with pytest.raises(ValueError, match="invalide"):
+        llm_service.generate_agent_reply(conversation_id=cid, user_id=uid)
 
 
-def test_generate_agent_reply_missing_dao_method_raises():
-    dao = MagicMock()
-    # ni get_messages_by_conversation ni get_by_conversation
-    dao.get_messages_by_conversation = None
-    dao.get_by_conversation = None
+def test_generate_agent_reply_missing_create(llm_service, monkeypatch):
+    # _build_history ok
+    monkeypatch.setattr(llm_service, "_build_history_for_conversation", lambda c, u: [])
+    # _call_llm ok
+    monkeypatch.setattr(llm_service, "_call_llm", lambda history, **kw: {"content": "x", "usage": {}})
 
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK({"content": "x"})
-
-    svc = LLMService(dao, requests_session=session)
-    with pytest.raises(RuntimeError):
-        svc.generate_agent_reply(1, 2)
+    # DAO sans méthode create
+    llm_service.message_dao = SimpleNamespace()
+    with pytest.raises(RuntimeError, match="ne fournit pas create"):
+        llm_service.generate_agent_reply(conversation_id=1, user_id=1)
 
 
-def test_generate_agent_reply_banned_output_raises_and_no_persist():
-    # Historique minimal
-    dao = MagicMock()
-    dao.get_messages_by_conversation.return_value = [make_msg(text="Hi", id_user=9)]
+# -------------------------------------------------------------------
+# Tests requete_invitee (méthode statique)
+# -------------------------------------------------------------------
 
-    # L'API répond du contenu "interdit"
-    session = MagicMock()
-    session.post.return_value = FakeResponseOK({"content": ">>>BANNED<<<"})
+def test_requete_invitee_success(monkeypatch):
+    def fake_post(url, json=None, headers=None, timeout=None):
+        # vérifier que le prompt est bien dans l'historique
+        hist = json["history"]
+        assert hist[1]["content"] == "Bonjour"
+        data = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Réponse invitée",
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 5,
+                "completion_tokens": 7,
+                "total_tokens": 12,
+            },
+        }
+        return DummyRespOK(data)
 
-    banned = MagicMock()
-    # Autorise input, bloque output
-    banned.contains_banned.side_effect = [False, True]
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
 
-    svc = LLMService(dao, requests_session=session, banned_service=banned)
-
-    with pytest.raises(ValueError):
-        svc.generate_agent_reply(1, 9)
-
-    # Rien ne doit être créé en base si contenu interdit
-    dao.create.assert_not_called()
+    out = LLMService.requete_invitee("Bonjour")
+    assert out["content"] == "Réponse invitée"
+    assert out["usage"]["total_tokens"] == 12
 
 
-def test_generate_agent_reply_http_error_propagates():
-    dao = MagicMock()
-    dao.get_messages_by_conversation.return_value = [make_msg(text="hello", id_user=1)]
+def test_requete_invitee_http_error(monkeypatch):
+    def fake_post(url, json=None, headers=None, timeout=None):
+        return DummyRespHTTPError()
 
-    session = MagicMock()
-    session.post.return_value = FakeResponseError(503, "Service Unavailable")
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
 
-    svc = LLMService(dao, requests_session=session)
+    with pytest.raises(RuntimeError, match="HTTP invitee"):
+        LLMService.requete_invitee("Hello")
 
-    import requests
 
-    with pytest.raises(requests.HTTPError):
-        svc.generate_agent_reply(1, 1)
+def test_requete_invitee_bad_json(monkeypatch):
+    class DummyNoJSON:
+        def __init__(self):
+            self.status_code = 200
+            self.text = "not json"
 
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            raise ValueError("no json")
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        return DummyNoJSON()
+
+    monkeypatch.setattr("Service.LLMService.requests.post", fake_post)
+
+    with pytest.raises(RuntimeError, match="non-JSON depuis invitee"):
+        LLMService.requete_invitee("Hello")
