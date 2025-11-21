@@ -1,4 +1,3 @@
-SCHEMA_SQL = """
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status_enum') THEN
@@ -83,4 +82,3 @@ CREATE TABLE IF NOT EXISTS collaboration (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_collaboration_unique
   ON collaboration(id_conversation, id_user);
 CREATE INDEX IF NOT EXISTS idx_collaboration_role ON collaboration(role);
-"""
