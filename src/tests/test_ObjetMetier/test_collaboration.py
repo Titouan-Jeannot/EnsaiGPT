@@ -31,12 +31,8 @@ def test_collaboration_init_type_errors():
     with pytest.raises(ValueError):
         Collaboration(id_collaboration=1, id_conversation=10, id_user=100, role=123)
 
-    # ⚠️ SUPPRIMÉ : id_collaboration=None est maintenant valide
-    # with pytest.raises(ValueError):
-    #     Collaboration(
-    #         id_collaboration=None, id_conversation=10, id_user=100, role="admin"
-    #     )
-
+    # id_collaboration=None est valide
+    # Les autres None ne le sont pas
     with pytest.raises(ValueError):
         Collaboration(id_collaboration=1, id_conversation=None, id_user=100, role="admin")
     with pytest.raises(ValueError):
@@ -106,7 +102,7 @@ def test_collaboration_edge_cases():
     assert collab_max.role == "admin"
 
     # Test avec différents rôles valides
-    for valid_role in ["admin", "viewer", "writer", "banned"]:
+    for valid_role in ["admin", "viewer", "writer", "banni"]:
         collab = Collaboration(id_collaboration=1, id_conversation=1, id_user=1, role=valid_role)
         assert collab.role == valid_role
 
@@ -126,7 +122,7 @@ def test_non_integer_ids():
 
 
 def test_none_parameters():
-    # ⚠️ MODIFIÉ : id_collaboration=None est maintenant valide
+    # id_collaboration=None est maintenant valide
     collab = Collaboration(id_collaboration=None, id_conversation=10, id_user=100, role="admin")
     assert collab.id_collaboration is None
 
@@ -182,11 +178,11 @@ def test_negative_ids():
 
 def test_zero_ids():
     """Test avec des IDs à zéro"""
-    collab = Collaboration(id_collaboration=0, id_conversation=0, id_user=0, role="banned")
+    collab = Collaboration(id_collaboration=0, id_conversation=0, id_user=0, role="banni")
     assert collab.id_collaboration == 0
     assert collab.id_conversation == 0
     assert collab.id_user == 0
-    assert collab.role == "banned"
+    assert collab.role == "banni"
 
 
 def test_role_as_empty_string():

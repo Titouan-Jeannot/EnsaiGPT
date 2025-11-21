@@ -34,11 +34,12 @@ def test_init_success_with_id_and_dates():
 
 
 def test_init_success_other_allowed_statuses():
-    u_inactive = User(
-        2, "u2", "Nom", "Prenom", "u2@example.com", "h", "s", status="inactive"
+    # Statuts autorisés par la classe : "active", "deleted", "banni"
+    u_deleted = User(
+        2, "u2", "Nom", "Prenom", "u2@example.com", "h", "s", status="deleted"
     )
     u_banni = User(3, "u3", "Nom", "Prenom", "u3@example.com", "h", "s", status="banni")
-    assert u_inactive.status == "inactive"
+    assert u_deleted.status == "deleted"
     assert u_banni.status == "banni"
 
 
@@ -140,6 +141,7 @@ def test_init_failure_setting_param_not_str():
 
 
 def test_init_failure_status_case_and_whitespace():
+    # Les variantes de casse / espaces ne doivent pas passer
     with pytest.raises(ValueError):
         User(
             1,
@@ -280,6 +282,8 @@ def test_str_contains_expected_parts():
 def test_large_number_of_users_creation_explicit():
     users = []
     for i in range(100):
+        # On alterne entre "active" et "deleted" (tous deux valides)
+        status = "active" if i % 2 else "deleted"
         u = User(
             i,
             f"user{i}",
@@ -288,7 +292,7 @@ def test_large_number_of_users_creation_explicit():
             f"user{i}@ex.com",
             "hash",
             "salt",
-            status="active" if i % 2 else "inactive",
+            status=status,
         )
         users.append(u)
     assert len(users) == 100

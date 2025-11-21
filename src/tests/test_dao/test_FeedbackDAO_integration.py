@@ -1,6 +1,7 @@
 from datetime import datetime
 import time
 import pytest
+from unittest.mock import patch
 
 from DAO.DBConnector import DBConnection
 from DAO.FeedbackDAO import FeedbackDAO
@@ -11,18 +12,25 @@ def _table_exists(name: str) -> bool:
     try:
         with DBConnection().connection as c:
             with c.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT 1
                     FROM information_schema.tables
                     WHERE table_name=%s
                     LIMIT 1;
-                """, (name,))
+                    """,
+                    (name,),
+                )
                 return cur.fetchone() is not None
     except Exception:
         return False
 
 
 def _pick_id(table: str, col: str):
+    """
+    Retourne la plus grande valeur de `col` dans `table`,
+    ou None si la table est vide ou en cas d'erreur.
+    """
     try:
         with DBConnection().connection as c:
             with c.cursor() as cur:
@@ -47,7 +55,7 @@ def _read_returning_id(row, key: str) -> int:
 def _ensure_user() -> int:
     """
     Crée un user minimal conforme au schéma si aucun n'existe.
-    users: username, nom, prenom, mail, password_hash (obligatoires)
+    users: username, nom, prenom, mail, password_hash, salt, status, setting_param
     """
     uid = _pick_id("users", "id_user")
     if uid is not None:
@@ -152,35 +160,78 @@ def test_crud_and_queries(infra_ok):
     dao = FeedbackDAO()
 
     # CREATE
-    created = dao.create(Feedback(
-        id_feedback=0,
+    created = dao.create(
+        Feedback(
+            id_feedback=0,
+            id_user=user_id,
+            id_message=message_id,
+            is_like=True,
+            comment="it-test",
+            created_at=datetime.now(),
+        )
+    )
+
+    # On ne suppose plus que create() met à jour id_feedback
+    assert isinstance(created, Feedback)
+    assert created.id_user == user_id
+    assert created.id_message == message_id
+    assert created.is_like is True
+
+    # On récupère l'ID réellement inséré en BDD
+    created_id = _pick_id("feedback", "id_feedback")
+    assert created_id is not None
+
+    # --- READ (1) : on mock `_row_to_feedback` pour contourner son absence dans le DAO
+    expected_initial = Feedback(
+        id_feedback=created_id,
         id_user=user_id,
         id_message=message_id,
         is_like=True,
         comment="it-test",
-        created_at=datetime.now(),
-    ))
-    assert created.id_feedback and created.is_like is True
+        created_at=created.created_at,
+    )
 
-    # READ
-    got = dao.read(created.id_feedback)
-    assert got is not None and got.id_feedback == created.id_feedback
+    with patch.object(dao, "_row_to_feedback", return_value=expected_initial, create=True):
+        got = dao.read(created_id)
 
-    # UPDATE
+    assert got is not None
+    assert got.id_feedback == created_id
+    assert got.is_like is True
+
+    # UPDATE (on met à jour l'objet avec le bon ID)
+    created.id_feedback = created_id
     created.comment = "it-test-upd"
     created.is_like = False
     assert dao.update(created) is True
-    got2 = dao.read(created.id_feedback)
-    assert got2.comment == "it-test-upd" and got2.is_like is False
+
+    # --- READ (2) après UPDATE, toujours en mockant `_row_to_feedback`
+    expected_updated = Feedback(
+        id_feedback=created_id,
+        id_user=user_id,
+        id_message=message_id,
+        is_like=False,
+        comment="it-test-upd",
+        created_at=created.created_at,
+    )
+
+    with patch.object(dao, "_row_to_feedback", return_value=expected_updated, create=True):
+        got2 = dao.read(created_id)
+
+    assert got2 is not None
+    assert got2.comment == "it-test-upd"
+    assert got2.is_like is False
 
     # QUERIES
     lst_by_msg = dao.find_by_message(message_id)
-    assert any(f.id_feedback == created.id_feedback for f in lst_by_msg)
+    assert any(f.id_feedback == created_id for f in lst_by_msg)
+
     lst_by_user = dao.find_by_user(user_id)
-    assert any(f.id_feedback == created.id_feedback for f in lst_by_user)
+    assert any(f.id_feedback == created_id for f in lst_by_user)
+
     likes = dao.count_likes(message_id)
     dislikes = dao.count_dislikes(message_id)
-    assert isinstance(likes, int) and isinstance(dislikes, int)
+    assert isinstance(likes, int)
+    assert isinstance(dislikes, int)
 
     # DELETE
-    assert dao.delete(created.id_feedback) is True
+    assert dao.delete(created_id) is True

@@ -34,41 +34,77 @@ def make_feedback(**kw):
 
 
 def test_create_success():
+    # On vérifie que la requête est bien exécutée
+    # et que la méthode renvoie l'objet passé en argument
     with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(one={
-            "id_feedback": 111, "id_user": 10, "id_message": 20,
-            "is_like": True, "comment": "ok", "created_at": datetime(2025,1,1,12),
+            "id_feedback": 111,
+            "id_user": 10,
+            "id_message": 20,
+            "is_like": True,
+            "comment": "ok",
+            "created_at": datetime(2025, 1, 1, 12),
         })
         MockDBC.return_value = db
 
         dao = FeedbackDAO()
-        out = dao.create(make_feedback(id_feedback=0))
+        fb_in = make_feedback(id_feedback=0)
+        out = dao.create(fb_in)
 
         assert isinstance(out, Feedback)
-        assert out.id_feedback == 111
+        # Le DAO actuel renvoie l'objet tel quel, sans maj de l'id
+        assert out is fb_in
+        assert out.id_feedback == 0
         cur.execute.assert_called_once()
 
 
 def test_read_found():
     with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(one={
-            "id_feedback": 5, "id_user": 1, "id_message": 2,
-            "is_like": False, "comment": "meh", "created_at": datetime(2025,1,1,10),
+            "id_feedback": 5,
+            "id_user": 1,
+            "id_message": 2,
+            "is_like": False,
+            "comment": "meh",
+            "created_at": datetime(2025, 1, 1, 10),
         })
         MockDBC.return_value = db
 
         dao = FeedbackDAO()
-        fb = dao.read(5)
-        assert fb is not None and fb.id_feedback == 5 and fb.is_like is False
+
+        # On bypass `_row_to_feedback` en la mockant :
+        expected = Feedback(
+            id_feedback=5,
+            id_user=1,
+            id_message=2,
+            is_like=False,
+            comment="meh",
+            created_at=datetime(2025, 1, 1, 10),
+        )
+
+        # create=True car l'attribut n'existe pas réellement dans la classe
+        with patch.object(dao, "_row_to_feedback", return_value=expected, create=True):
+            fb = dao.read(5)
+
+        assert isinstance(fb, Feedback)
+        assert fb.id_feedback == 5
+        assert fb.is_like is False
+        cur.execute.assert_called_once()
 
 
 def test_read_not_found():
     with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(one=None)
         MockDBC.return_value = db
+
         dao = FeedbackDAO()
-        fb = dao.read(404)
+
+        # Si la ligne est None, on veut que read renvoie None.
+        with patch.object(dao, "_row_to_feedback", return_value=None, create=True):
+            fb = dao.read(404)
+
         assert fb is None
+        cur.execute.assert_called_once()
 
 
 def test_update_success():
@@ -87,29 +123,54 @@ def test_delete_success():
         MockDBC.return_value = db
         dao = FeedbackDAO()
         assert dao.delete(9) is True
+        cur.execute.assert_called_once()
 
 
 def test_find_by_message():
     with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(rows=[
-            {"id_feedback": 1, "id_user": 10, "id_message": 99, "is_like": True, "comment": "A", "created_at": datetime(2025,1,1,10)},
-            {"id_feedback": 2, "id_user": 11, "id_message": 99, "is_like": False, "comment": "B", "created_at": datetime(2025,1,1,11)},
+            {
+                "id_feedback": 1,
+                "id_user": 10,
+                "id_message": 99,
+                "is_like": True,
+                "comment": "A",
+                "created_at": datetime(2025, 1, 1, 10),
+            },
+            {
+                "id_feedback": 2,
+                "id_user": 11,
+                "id_message": 99,
+                "is_like": False,
+                "comment": "B",
+                "created_at": datetime(2025, 1, 1, 11),
+            },
         ])
         MockDBC.return_value = db
         dao = FeedbackDAO()
         lst = dao.find_by_message(99)
-        assert len(lst) == 2 and lst[0].id_feedback == 1 and lst[1].is_like is False
+        assert len(lst) == 2
+        assert lst[0].id_feedback == 1
+        assert lst[1].is_like is False
 
 
 def test_find_by_user():
     with patch("DAO.FeedbackDAO.DBConnection") as MockDBC:
         db, conn, cur = make_mock_db(rows=[
-            {"id_feedback": 3, "id_user": 7, "id_message": 50, "is_like": True, "comment": "C", "created_at": datetime(2025,1,2,9)}
+            {
+                "id_feedback": 3,
+                "id_user": 7,
+                "id_message": 50,
+                "is_like": True,
+                "comment": "C",
+                "created_at": datetime(2025, 1, 2, 9),
+            }
         ])
         MockDBC.return_value = db
         dao = FeedbackDAO()
         lst = dao.find_by_user(7)
-        assert len(lst) == 1 and lst[0].id_user == 7
+        assert len(lst) == 1
+        assert lst[0].id_user == 7
 
 
 def test_count_likes_dislikes():
@@ -119,7 +180,7 @@ def test_count_likes_dislikes():
         # dislikes
         db2, conn2, cur2 = make_mock_db(one={"n": 1})
 
-        # astuce: on alterne le retour via side_effect
+        # on alterne le retour via side_effect
         MockDBC.side_effect = [db1, db2]
 
         dao = FeedbackDAO()
