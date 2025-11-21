@@ -122,6 +122,8 @@ def update_account(user_id: int) -> None:
         change_mail = ask_yes_no("Nouvel email")
         if change_mail:
             mail = ask_nonempty("Nouvel email")
+        else:
+            mail = user_service.get_user_by_id(user_id).mail
         change_password = ask_yes_no("Modifier le mot de passe ?")
         password = None
         if change_password:
