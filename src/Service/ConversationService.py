@@ -4,22 +4,11 @@ from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 import secrets
 
-try:  # pragma: no cover
-    from ObjetMetier.Conversation import Conversation
-    from DAO.ConversationDAO import ConversationDAO
-    from Service.UserService import UserService
-    from Service.MessageService import MessageService
-except ImportError:  # pragma: no cover
-    from ObjetMetier.Conversation import Conversation  # pragma: no cover
-    from DAO.ConversationDAO import ConversationDAO  # pragma: no cover
-    from Service.UserService import UserService  # pragma: no cover
-    from Service.MessageService import MessageService  # pragma: no cover
-
-if TYPE_CHECKING:  # pragma: no cover
-    try:  # pragma: no cover
-        from Service.CollaborationService import CollaborationService  # pragma: no cover
-    except ImportError:  # pragma: no cover
-        from Service.CollaborationService import CollaborationService  # pragma: no cover
+from ObjetMetier.Conversation import Conversation
+from DAO.ConversationDAO import ConversationDAO
+from Service.UserService import UserService
+from Service.MessageService import MessageService
+from Service.CollaborationService import CollaborationService  # pragma: no cover
 
 
 class ConversationService:

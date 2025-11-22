@@ -3,10 +3,6 @@ from unittest.mock import MagicMock
 from Service.CollaborationService import CollaborationService
 from ObjetMetier.Collaboration import Collaboration
 
-# ----------------------------------------------------------
-# FIXTURE SERVICE AVEC DAO MOCKÉS
-# ----------------------------------------------------------
-
 @pytest.fixture
 def service():
     s = CollaborationService()

@@ -3,16 +3,10 @@ from datetime import datetime, timezone
 #from config import AGENT_USER_ID
 AGENT_USER_ID = 6
 
-try:
-    from ObjetMetier.Message import Message
-    from DAO.MessageDAO import MessageDAO
-    from Service.UserService import UserService
-    from Service.AuthService import AuthService
-except Exception:
-    from ObjetMetier.Message import Message
-    from DAO.MessageDAO import MessageDAO
-    from Service.UserService import UserService
-    from Service.AuthService import AuthService
+from ObjetMetier.Message import Message
+from DAO.MessageDAO import MessageDAO
+from Service.UserService import UserService
+from Service.AuthService import AuthService
 
 
 class MessageService:

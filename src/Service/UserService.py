@@ -1,13 +1,6 @@
-# Service pour la gestion des utilisateurs
-
-try:
-    from ObjetMetier.User import User
-    from DAO.UserDAO import UserDAO
-    from Service.AuthService import AuthService
-except Exception:
-    from ObjetMetier.User import User
-    from DAO.UserDAO import UserDAO
-    from Service.AuthService import AuthService
+from ObjetMetier.User import User
+from DAO.UserDAO import UserDAO
+from Service.AuthService import AuthService
 import re
 import os
 import base64

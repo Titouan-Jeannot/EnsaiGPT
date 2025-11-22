@@ -1,39 +1,16 @@
 from typing import List, Optional, Dict, Set, TYPE_CHECKING
 import datetime
 
-# --- Entités métiers (légères) ---
-try:
-    from ObjetMetier.Message import Message
-    from ObjetMetier.Conversation import Conversation
-    from ObjetMetier.User import User
-except Exception:
-    from ObjetMetier.Message import Message  # type: ignore
-    from ObjetMetier.Conversation import Conversation  # type: ignore
-    from ObjetMetier.User import User  # type: ignore
+from ObjetMetier.Message import Message
+from ObjetMetier.Conversation import Conversation
+from ObjetMetier.User import User
 
-# --- Types DAO / Services: uniquement pour l'analyse statique ---
-if TYPE_CHECKING:
-    try:
-        from DAO.MessageDAO import MessageDAO
-        from DAO.ConversationDAO import ConversationDAO
-        from DAO.UserDAO import UserDAO
-        from DAO.CollaborationDAO import CollaborationDAO
-        from Service.CollaborationService import CollaborationService
-        from Service.UserService import UserService
-    except Exception:  # type: ignore
-        from DAO.MessageDAO import MessageDAO  # type: ignore
-        from DAO.ConversationDAO import ConversationDAO  # type: ignore
-        from DAO.UserDAO import UserDAO  # type: ignore
-        from DAO.CollaborationDAO import CollaborationDAO  # type: ignore
-        from Service.CollaborationService import CollaborationService  # type: ignore
-        from Service.UserService import UserService  # type: ignore
-else:
-    from typing import Any as MessageDAO  # type: ignore
-    from typing import Any as ConversationDAO  # type: ignore
-    from typing import Any as UserDAO  # type: ignore
-    from typing import Any as CollaborationDAO  # type: ignore
-    from typing import Any as CollaborationService  # type: ignore
-    from typing import Any as UserService  # type: ignore
+from DAO.MessageDAO import MessageDAO
+from DAO.ConversationDAO import ConversationDAO
+from DAO.UserDAO import UserDAO
+from DAO.CollaborationDAO import CollaborationDAO
+from Service.CollaborationService import CollaborationService
+from Service.UserService import UserService
 
 
 class ExportService:

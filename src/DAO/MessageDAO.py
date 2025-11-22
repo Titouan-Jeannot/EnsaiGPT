@@ -4,11 +4,8 @@ from typing import List, Optional
 from psycopg2.extras import RealDictCursor
 
 from DAO.DBConnector import DBConnection
-# Assurez-vous que l'importation de Message est correcte dans votre environnement
-try:
-    from ObjetMetier.Message import Message
-except Exception:
-    from ObjetMetier.Message import Message
+
+from ObjetMetier.Message import Message
 
 
 class MessageDAO:

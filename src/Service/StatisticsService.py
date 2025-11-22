@@ -2,33 +2,15 @@ from typing import List, Optional, Dict, Tuple, TYPE_CHECKING
 import datetime
 import logging
 
-# -----------------------------
-# Import des entités métiers
-# -----------------------------
-try:
-    from ObjetMetier.Message import Message
-    from ObjetMetier.Conversation import Conversation
-    from ObjetMetier.User import User
-    from ObjetMetier.Collaboration import Collaboration
-except Exception:
-    from ObjetMetier.Message import Message  # type: ignore
-    from ObjetMetier.Conversation import Conversation  # type: ignore
-    from ObjetMetier.User import User  # type: ignore
-    from ObjetMetier.Collaboration import Collaboration  # type: ignore
+from ObjetMetier.Message import Message
+from ObjetMetier.Conversation import Conversation
+from ObjetMetier.User import User
+from ObjetMetier.Collaboration import Collaboration
 
-# -----------------------------
-# Typage conditionnel (DAO uniquement pour mypy)
-# -----------------------------
-if TYPE_CHECKING:
-    from DAO.MessageDAO import MessageDAO
-    from DAO.ConversationDAO import ConversationDAO
-    from DAO.CollaborationDAO import CollaborationDAO
-    from DAO.UserDAO import UserDAO
-else:
-    MessageDAO = object  # type: ignore
-    ConversationDAO = object  # type: ignore
-    CollaborationDAO = object  # type: ignore
-    UserDAO = object  # type: ignore
+from DAO.MessageDAO import MessageDAO
+from DAO.ConversationDAO import ConversationDAO
+from DAO.CollaborationDAO import CollaborationDAO
+from DAO.UserDAO import UserDAO
 
 
 class StatisticsService:

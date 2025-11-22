@@ -5,10 +5,7 @@ from psycopg2.extras import RealDictCursor
 
 from DAO.DBConnector import DBConnection
 
-try:
-    from ObjetMetier.User import User
-except Exception:
-    from ObjetMetier.User import User
+from ObjetMetier.User import User
 
 
 class UserDAO:
