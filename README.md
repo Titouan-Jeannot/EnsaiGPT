@@ -1,147 +1,196 @@
-# Projet 2A 2025 — EnsaiGPT
+# Project 2A 2025 — EnsaiGPT
 
 ---
 
-##  Présentation rapide
+## Quick Overview
 
-**EnsaiGPT** est un projet Python conçu pour offrir une expérience de développement optimale et isolée, grâce à PDM.  
-Le projet vise à résoudre les principaux problèmes rencontrés en data science comme :
-- Plusieurs versions de Python coexistantes
-- Sélection incohérente de l'interpréteur selon les outils
-- Conflits de version liés aux paquets globaux
+**EnsaiGPT** is a Python project designed to offer an optimal and isolated development experience using PDM.  
+The project aims to solve the main issues encountered in data science, such as:
+- Multiple Python versions coexisting
+- Inconsistent interpreter selection across tools
+- Version conflicts related to global packages
 
-Chaque projet dispose ainsi de son propre environnement virtuel, assurant stabilité et reproductibilité.
+Each project therefore has its own virtual environment, ensuring stability and reproducibility.
 
 ---
 
-##  Environnement de développement
+## Development Environment
 
-- **Gestionnaire de paquets : [PDM](https://pdm.fming.dev/)**
-  - Déclaration des dépendances via `pyproject.toml`
-  - Versions verrouillées dans `pdm.lock`
-  - Création automatique d’un environnement virtuel isolé
-  - Configuration centralisée
+- **Package Manager: [PDM](https://pdm.fming.dev/)**
+  - Dependency declaration via `pyproject.toml`
+  - Versions locked in `pdm.lock`
+  - Automatic creation of an isolated virtual environment
+  - Centralized configuration
 
-- **Formatage & Linting : [Ruff](https://github.com/astral-sh/ruff)**
-  - Formatage, linting et tri des imports ultra-rapide grâce à Rust
-  - Remplace les classiques : `flake8`, `black`, `isort`
+- **Formatting & Linting: [Ruff](https://github.com/astral-sh/ruff)**
+  - Ultra-fast formatting, linting, and import sorting thanks to Rust
+  - Replaces the classics: `flake8`, `black`, `isort`
 
-- **Vérification de types : [MyPy](http://mypy-lang.org/)**
-  - Optionnelle mais vivement recommandée.
-  - S’utilise via :  
+- **Type Checking: [MyPy](http://mypy-lang.org/)**
+  - Optional but strongly recommended.
+  - Use via:  
     ```
     pdm typecheck
     ```
 
 ---
 
-##  Comment utiliser le projet ?
+## How to Use the Project?
 
-1. **Installer PDM**
+1. **Install PDM**
    ```bash
    pip install --user pdm
    ```
 
-2. **Installer les dépendances**
+2. **Install Dependencies**
    ```bash
    pdm install
    ```
-   > Installe toutes les dépendances dans l’environnement virtuel isolé du projet.
+   > Installs all dependencies in the project’s isolated virtual environment.
 
-3. **Configurer l’environnement**
-   - Copier `.env.example` vers `.env`
-   - Renseigner les accès BDD et API nécessaires
+3. **Configure the Environment**
+   - Copy `.env.example` to `.env` or use 
+   ```bash
+   cp .env.example .env
+   ```
 
-4. **Initialiser la base PostgreSQL**
-   - Soit via le script SQL : `data/init_db.sql`
-   - Soit via le script Python : `src/Database/init_db.py`
+4. **Initialize the PostgreSQL Database**
+   - Or via the Python script: `src/Database/init_db.py`
 
-5. **Lancer l’application**
+5. **Run the Application**
    ```bash
    pdm run python src/main.py
    ```
 
-6. **Gérer les dépendances**
-   - **Ajouter :**  
+6. **Manage Dependencies**
+   - **Add:**  
      ```bash
-     pdm add nom-du-package
+     pdm add package-name
      ```
-   - **Supprimer :**  
+   - **Remove:**  
      ```bash
-     pdm remove nom-du-package
+     pdm remove package-name
      ```
 
-7. **Outils qualité**
-   - **Formatage :**  
+7. **Quality Tools**
+   - **Format:**  
      ```bash
      pdm format
      ```
-   - **Lint :**  
+   - **Lint:**  
      ```bash
      pdm lint
      ```
-   - **Correction auto :**  
+   - **Auto-correct:**  
      ```bash
      pdm lint --fix
      ```
-   - **Type checking :**  
+   - **Type checking:**  
      ```bash
      pdm typecheck
      ```
 
 ---
 
-##  Structure du projet
+## Project Structure
 
-_(Structure identique, affichage inchangé)_
+├── README.md
+├── README.students.md
+├── ARCHITECTURE.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── pyproject.toml
+├── pdm.lock
+├── requirements.txt
+├── .env.example
+├── .coveragerc
+├── pytest.ini
+├── extensions.txt
+├── data/
+│   └── init_db.sql
+├── doc/
+│   └── suivi/
+│       ├── 2025.09.04-semaine1.md
+│       ├── 2025.09.11-semaine2.md
+│       ├── 2025.09.16-semaine3.md
+│       ├── 2025.09.25-semaine4.md
+│       ├── 2025.10.02-semaine5.md
+│       ├── 2025.10.09-semaine6.md
+│       ├── 2025.10.16-semaine7.md
+│       ├── 2025.10.23-semaine8.md
+│       ├── 2025.11.06-semaine10.md
+│       └── 2025.11.13-semaine11.md
+├── exports/
+│   ├── discussion de colluche.txt
+│   └── Gros dab.txt
+├── src/
+│   ├── main.py
+│   ├── Service/
+│   │   ├── AuthService.py
+│   │   ├── CollaborationService.py
+│   │   ├── ConversationService.py
+│   │   ├── ExportService.py
+│   │   ├── FeedbackService.py
+│   │   ├── LLMService.py
+│   │   ├── MessageService.py
+│   │   ├── SearchService.py
+│   │   └── UserService.py
+│   ├── DAO/
+│   │   ├── DBConnector.py
+│   │   ├── ConversationDAO.py
+│   │   ├── MessageDAO.py
+│   │   ├── FeedbackDAO.py
+│   │   ├── UserDAO.py
+│   │   └── CollaborationDAO.py
+│   ├── ObjetMetier/
+│   │   ├── User.py
+│   │   ├── Conversation.py
+│   │   ├── Message.py
+│   │   ├── Feedback.py
+│   │   └── Collaboration.py
+│   ├── Database/
+│   │   ├── init_db.py
+│   │   ├── manage_test_db.py
+│   │   ├── schema_sql.py
+│   │   └── settings.py
+│   ├── cli/
+│   │   ├── ui.py
+│   │   ├── context.py
+│   │   └── pages/
+│   │       ├── auth.py
+│   │       ├── home.py
+│   │       ├── user.py
+│   │       ├── conversations.py
+│   │       ├── conversation_detail.py
+│   │       ├── collaboration.py
+│   │       ├── invitee.py
+│   │       └── feedback.py
+│   ├── tests/
+│   │   ├── test_db_infra.py
+│   │   ├── test_dao/
+│   │   ├── test_ObjetMetier/
+│   │   └── test_Database/
+│   └── Utils/
+│       ├── Singleton.py
+│       └── log_decorator.py
+└── .vscode/
+    └── settings.json
 
 ---
 
-##  Fonctionnalités principales
+## Main Features
 
-- Gestion des utilisateurs
-- Création & gestion des conversations
-- Collaboration multi-utilisateur
-- Système de messagerie
-- Intégration LLM externe
-- Statistiques
-- Export TXT
-- Gestion des feedbacks
-- Fonctionnalités de recherche
-- CLI interactive
-- Support PostgreSQL
-- Tests unitaires + d’intégration
-
----
-
-## � Packaging
-
-Le projet **n’est pas destiné à la distribution** (`distribution = false`).  
-Téléchargez-le via l’option **Download ZIP** sur GitHub.
-
----
-
-##  Pour la notation
-
-```bash
-pdm install
-pdm run python src/main.py
-```
-
----
-
-##  Librairies recommandées
-
-- `requests`
-- `FastAPI`, `Uvicorn`
-- `psycopg2`
-- `pytest`
-
----
-
-##  Extensions VSCode recommandées
-
-La liste complète est dans `extensions.txt`.  
-Pensez à **désactiver les linters doublons** (`flake8`, `pylance`, ...).
+- User management
+- Creation & management of conversations
+- Multi-user collaboration
+- Messaging system
+- External LLM integration
+- Statistics
+- TXT export
+- Feedback management
+- Search features
+- Interactive CLI
+- PostgreSQL support
+- Unit & integration tests
 
 ---
