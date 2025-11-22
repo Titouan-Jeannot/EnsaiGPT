@@ -83,17 +83,13 @@ Each project therefore has its own virtual environment, ensuring stability and r
 ## Project Structure
 
 ├── README.md
-├── README.students.md
 ├── ARCHITECTURE.md
 ├── CONTRIBUTING.md
 ├── LICENSE
-├── pyproject.toml
-├── pdm.lock
 ├── requirements.txt
 ├── .env.example
 ├── .coveragerc
 ├── pytest.ini
-├── extensions.txt
 ├── data/
 │   └── init_db.sql
 ├── doc/
@@ -109,8 +105,6 @@ Each project therefore has its own virtual environment, ensuring stability and r
 │       ├── 2025.11.06-semaine10.md
 │       └── 2025.11.13-semaine11.md
 ├── exports/
-│   ├── discussion de colluche.txt
-│   └── Gros dab.txt
 ├── src/
 │   ├── main.py
 │   ├── Service/
