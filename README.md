@@ -16,12 +16,6 @@ Each project therefore has its own virtual environment, ensuring stability and r
 
 ## Development Environment
 
-- **Package Manager: [PDM](https://pdm.fming.dev/)**
-  - Dependency declaration via `pyproject.toml`
-  - Versions locked in `pdm.lock`
-  - Automatic creation of an isolated virtual environment
-  - Centralized configuration
-
 - **Formatting & Linting: [Ruff](https://github.com/astral-sh/ruff)**
   - Ultra-fast formatting, linting, and import sorting thanks to Rust
   - Replaces the classics: `flake8`, `black`, `isort`
@@ -37,32 +31,26 @@ Each project therefore has its own virtual environment, ensuring stability and r
 
 ## How to Use the Project?
 
-1. **Install PDM**
+1. **Install Dependencies**
    ```bash
-   pip install --user pdm
+   pip install -r requirements.txt
    ```
 
-2. **Install Dependencies**
-   ```bash
-   pdm install
-   ```
-   > Installs all dependencies in the project’s isolated virtual environment.
-
-3. **Configure the Environment**
+2. **Configure the Environment**
    - Copy `.env.example` to `.env` or use 
    ```bash
    cp .env.example .env
    ```
 
-4. **Initialize the PostgreSQL Database**
-   - Or via the Python script: `src/Database/init_db.py`
+3. **Initialize the PostgreSQL Database**
+   - Via the Python script: `src/Database/init_db.py`
 
-5. **Run the Application**
+4. **Run the Application**
    ```bash
    pdm run python src/main.py
    ```
 
-6. **Manage Dependencies**
+5. **Manage Dependencies**
    - **Add:**  
      ```bash
      pdm add package-name
@@ -72,7 +60,7 @@ Each project therefore has its own virtual environment, ensuring stability and r
      pdm remove package-name
      ```
 
-7. **Quality Tools**
+§. **Quality Tools**
    - **Format:**  
      ```bash
      pdm format
