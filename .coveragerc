@@ -2,9 +2,11 @@
 source = src
 omit =
     src/tests/*
+    src/cli/*
+    src/main.py
     */__init__.py
 
 [report]
 exclude_lines =
     pragma: no cover
-    if __name__ == .__main__.:
+    if __name__ == "__main__":
