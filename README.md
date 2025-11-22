@@ -1,41 +1,142 @@
-# Prerequisite:  PDM 
-
-Install PDM for your user with pip 
-
-`> pip install --user pdm`
-
-Check your PDM version with 
-
-`> pdm --version`
-
-## In case of `pdm: command not found`
-
-You must then add the PDM executable to your PATH environment 
-
-To do so: 
-
-Locate the folder in which pdm was installed with `pip list -v` (Usually `C:/Users/UserName/AppData/Roaming or Local/Python/Python310/site-packages`)
-
-Find the `Scripts` folder which is a sibling of the `site-packages` (e.g. `C:/Users/UserName/AppData/Roaming or Local/Python/Python310/Scripts`; it should contain `pdm.exe`) and copy it. 
-
-On Windows, search `Edit the system environment variables`
-
-In `System Properties`, click `Environment variables` => One of the `User variables` should be named `Path`
-
-`Edit` it and add the copied folder at the end of the variable, then save. 
-
-You can now open a new terminal and retry 
-
-# How to install the app 
-
-`> pdm install`
-
-That's all 😊
-
-# How to run the app 
-
-```> pdm start```
-
-This starts a server accessible on `localhost:8000`
-
-The API is then documented on `localhost:8000/docs`
+Projet 2A 2025 — EnsaiGPT
+<br>
+Development environment
+<br>
+Quick summary
+<br>
+Python is a widely used scripting language, especially in data science, but its developer experience (DX) can be chaotic due to:
+<br>
+multiple Python versions coexisting on the same machine
+inconsistent interpreter selection across tools
+global package installations causing version conflicts
+<br>
+To avoid these issues, each project should have its own isolated environment.
+This project uses PDM, which provides exactly that.
+<br>
+Package manager for the project
+<br>
+We use PDM because it allows:
+<br>
+declaring dependencies in pyproject.toml
+locking versions in pdm.lock
+automatically creating an isolated virtual environment
+defining scripts and configuration in a single file
+<br>
+Formatter and linter
+<br>
+Instead of the classical trio flake8 + black + isort, this project uses Ruff, a fast Rust-based tool that performs:
+<br>
+linting
+formatting
+import sorting
+<br>
+Type checking
+<br>
+Type checking is optional but recommended.
+If types are added, MyPy will validate them:
+<br>
+pdm typecheck
+<br>
+How to use
+<br>
+1. Install PDM
+<br>
+Install PDM globally:
+<br>
+pip install --user pdm
+<br>
+2. Install the project
+<br>
+Inside the project folder:
+<br>
+pdm install
+<br>
+This installs all dependencies inside an isolated virtual environment.
+<br>
+3. Environment setup
+<br>
+Before running the application:
+<br>
+Create a .env file based on .env.example
+Fill in database and API keys as required
+<br>
+4. Initialize the PostgreSQL database
+<br>
+Initialize the PostgreSQL database using either:
+<br>
+data/init_db.sql
+src/Database/init_db.py
+<br>
+5. Run the project
+<br>
+pdm run python src/main.py
+<br>
+This ensures the correct interpreter and dependencies are used.
+<br>
+6. Adding and removing dependencies
+<br>
+Add:
+pdm add my-package
+<br>
+Remove:
+pdm remove my-package
+<br>
+7. Formatter, linter, and type-checker
+<br>
+Format:
+pdm format
+<br>
+Lint:
+pdm lint
+<br>
+Fix:
+pdm lint --fix
+<br>
+Type check:
+pdm typecheck
+<br>
+Project Structure
+<br>
+(identique, affichage inchangé)
+<br>
+Features
+<br>
+EnsaiGPT provides:
+<br>
+User management
+Conversation creation and management
+Collaboration handling
+Messaging system
+External LLM integration
+Statistics
+TXT export
+Feedback management
+Search features
+Interactive CLI
+PostgreSQL support
+Unit + integration tests
+<br>
+Additional notes and requirements
+<br>
+Packaging the app
+<br>
+This project is not meant to be packaged (distribution = false).
+Use GitHub’s “Download ZIP” feature.
+<br>
+For grading
+<br>
+pdm install
+pdm run python src/main.py
+<br>
+Recommended libraries
+<br>
+requests
+FastAPI / Uvicorn
+psycopg2
+pytest
+<br>
+Recommended VSCode extensions
+<br>
+Listed in extensions.txt.
+Disable overlapping linters (flake8, pylance…).
+<br>
